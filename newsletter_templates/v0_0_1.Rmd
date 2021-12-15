@@ -1,0 +1,26 @@
+---
+title: "Your DECIDE newsletter"
+output: html_document
+params:
+  name: NULL
+  email: NULL
+  irecord_username: NULL
+  ispot_username: NULL
+  inat_username: NULL
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+params$name
+params$email
+params$irecord_username
+
+
+```
+
+
