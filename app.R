@@ -3,8 +3,17 @@ library(rmarkdown)
 library(shiny)
 library(httr)
 library(jsonlite)
+library(blastula)
+library(keyring)
 
 source("functions/check_usernames.R")
+
+
+# create_smtp_creds_key(
+#     id = "gmail",
+#     provider = "gmail",
+#     user = "simonrolph.ukceh@gmail.com",
+# )
 
 # Define UI for application
 ui <- fluidPage(
@@ -21,12 +30,14 @@ ui <- fluidPage(
             textInput("inat_username","iNaturalist Username","simonrolph"),
             actionButton("username_check","Check usernames"),
             actionButton("preview_newsletter","Preview your newsletter"),
+            actionButton("send_preview","Send me the newsletter preview"),
             actionButton("Sign up","Sign up to mailing list"),
             downloadButton('downloadReport',"Download previewed newsletter"),
     ),
         
     
     mainPanel(textOutput("inat_status"),
+              textOutput("email_status"),
               htmlOutput("preview"))
     )
 )
@@ -35,13 +46,14 @@ ui <- fluidPage(
 # Define server logic 
 server <- function(input, output) {
     
+    #check inaturalist username
     inat_status <- eventReactive(input$username_check, {
         check_inat_username(input$inat_username)
     })
     
-    
     output$inat_status <- renderText(paste("iNaturalist user found:",inat_status()))
 
+    #get the inputs into a list ready for parametised markdown reports
     markdown_params <- reactive({
         list(
             name = input$name,
@@ -50,9 +62,9 @@ server <- function(input, output) {
             ispot_username = input$ispot_username,
             inat_username = input$inat_username
         )
-
     })
     
+    # create the newsletter
     newsletter_file_location <- eventReactive(input$preview_newsletter, {
         print("Generating newsletter preview")
         out_file_name <- paste0("../newsletters/previews/",input$name,".html")
@@ -63,11 +75,30 @@ server <- function(input, output) {
         out
     })
     
-    
+    # render the newsletter preview in the shiny app
     output$preview <- renderUI(HTML(paste(readLines(newsletter_file_location()), collapse="\n")))
     
+    #send a copy of the newsletter preview to the email address
+    email_success <- eventReactive(input$send_preview, {
+        print("ok that's good")
+        sender <- "simonrolph.ukceh@gmail.com"
+        recipients <- c(input$email)
+        
+        email_obj <- blastula:::cid_images(newsletter_file_location())
+        
+        smtp_send(email_obj,
+                  from = sender,
+                  to = recipients,
+                  subject = "DECIDE newsletter",
+                  credentials = creds_key("gmail")
+        )
 
-    #download html version
+    })
+
+    
+    output$email_status <- renderText(email_success())
+
+    #download a html version of the newsletter
     output$downloadReport <- downloadHandler(
         filename = function() {
             paste('my-report.html')

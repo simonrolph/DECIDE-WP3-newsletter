@@ -1,10 +1,6 @@
 ---
 title: "Your DECIDE newsletter"
-output: 
-  html_document:
-    theme: null
-    highlight: null
-    mathjax: null
+output: blastula::blastula_email
 params:
   name: NULL
   email: NULL
@@ -62,7 +58,7 @@ inat_records$website <- "iNaturalist"
 
 
 #combine records from different sources
-all_records <- head(inat_records)
+all_records <- inat_records
 
 all_records$observed_on <- all_records$observed_on %>% as.Date()
 
@@ -125,7 +121,7 @@ if (most_recent_record$decide_score > mean(all_records$decide_score,na.rm = T)){
 
 ```
 
-You most recent record of `r most_recent_record$scientific_name` `r recent_verses_average`
+You most recent record of `r most_recent_record$scientific_name` `r recent_verses_average` <a href="https://decide.ceh.ac.uk/opts/scoremap/map" target="_blank">Visit the DECIDE recorder tool</a>
 
 <hr>
 
