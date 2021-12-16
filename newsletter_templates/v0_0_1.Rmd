@@ -1,6 +1,10 @@
 ---
 title: "Your DECIDE newsletter"
-output: html_document
+output: 
+  html_document:
+    theme: null
+    highlight: null
+    mathjax: null
 params:
   name: NULL
   email: NULL
@@ -9,18 +13,127 @@ params:
   inat_username: NULL
 ---
 
+```{r include=FALSE}
+#Notes:
+
+# can't have javascript if we're sendint by email hence why theme, highlight and mathjax are set to null in the YAML, see: https://stackoverflow.com/questions/29370306/how-to-render-html-from-rmarkdown-without-javascript-in-output
+
+source("../functions/get_records.R")
+source("../functions/get_decide_score.R")
+library(ggplot2)
+library(dplyr)
+
+```
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## Hello `r params$name`
 
-```{r}
-params$name
-params$email
-params$irecord_username
+Date: `r Sys.Date()`
 
+### About you
+
+This is what we know about you: 
+
+Your email is `r params$email`
+
+Your iRecord username is `r params$irecord_username`
+
+Your iSpot username is `r params$ispot_username`
+
+Your iNaturalist username is `r params$inat_username`
+
+### Your recent records
+
+```{r, echo = F}
+#get records from iRecord
+irecord_records <- NULL
+
+#get records from iSpot
+ispot_records <- NULL
+
+#get records from iNaturalist
+inat_records <- get_records_inat(params$inat_username)
+inat_records$website <- "iNaturalist"
+
+
+
+
+#combine records from different sources
+all_records <- head(inat_records)
+
+all_records$observed_on <- all_records$observed_on %>% as.Date()
+
+
+#identify butterflies vs moths
+all_records$name <- "butterfly" #dummy
+
+
+#detect and remove duplicates
+
+
+#group into visits
+
+
+# get decide score
+all_records$decide_score <- apply(all_records[,c("latitude","longitude","name")],1, function(x) {get_decide_score(x[1],x[2],x[3])})
+
+#unlist it but preserve null values
+all_records$decide_score[sapply(all_records$decide_score, is.null)] <- NA
+all_records$decide_score <- unlist(all_records$decide_score)
+
+#render a rable
+kable(all_records[,c("scientific_name","latitude","longitude","observed_on","name","website","decide_score")])
+
+
+
+#some highlights that are used in the visualisation:
+best_record <- all_records %>% arrange(desc(decide_score)) %>% head(n=1)
+most_recent_record <- all_records %>% arrange(desc(observed_on)) %>% head(n=1)
+```
+
+### Your most valuable record
+
+```{r,echo=FALSE}
+
+
+
+include_graphics(best_record$image_url)
 
 ```
+
+Your most valuable record is a record of `r best_record$scientific_name` observed on `r best_record$observed_on` with a DECIDE recording priority value of `r best_record$decide_score`. Wow! Why not make more records in this area? <a href="https://decide.ceh.ac.uk/opts/scoremap/map" target="_blank">Visit the DECIDE recorder tool</a>
+
+### Your recording timeline
+
+Have been recording more strategically recently? Let\'s have a look!
+
+```{r,echo=FALSE,warning = F}
+all_records %>% ggplot(aes(x = observed_on,y = decide_score,label = scientific_name))+
+  geom_point()+
+  scale_x_date()+
+  theme_bw()+
+  labs(x = "Date of record",y = "DECIDE recording priority")
+
+if (most_recent_record$decide_score > mean(all_records$decide_score,na.rm = T)){
+  recent_verses_average <- "was above your average recording priority. Nice one!"
+} else {
+  recent_verses_average <- "was below your average recording priority."
+}
+
+```
+
+You most recent record of `r most_recent_record$scientific_name` `r recent_verses_average`
+
+<hr>
+
+This newsletter was generated on `r Sys.time()`
+
+Don\'t want to receive these emails any more? <a>Unsubscribe from the DECIDE personalised newsletter</a>
+
+
+
 
 

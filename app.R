@@ -10,7 +10,7 @@ source("functions/check_usernames.R")
 ui <- fluidPage(
     
     # Application title
-    titlePanel("Your DECIDE diary"),
+    titlePanel("DECIDE: Sign up to your personalised newsletter"),
     
     sidebarLayout(
         sidebarPanel(
@@ -20,12 +20,14 @@ ui <- fluidPage(
             textInput("ispot_username","iSpot Username","test"),
             textInput("inat_username","iNaturalist Username","simonrolph"),
             actionButton("username_check","Check usernames"),
-            downloadButton('downloadReport',"Preview a newsletter"),
-            actionButton("Sign up","Sign up to mailing list")
+            actionButton("preview_newsletter","Preview your newsletter"),
+            actionButton("Sign up","Sign up to mailing list"),
+            downloadButton('downloadReport',"Download previewed newsletter"),
     ),
         
     
-    mainPanel(textOutput("inat_status"))
+    mainPanel(textOutput("inat_status"),
+              htmlOutput("preview"))
     )
 )
     
@@ -38,7 +40,7 @@ server <- function(input, output) {
     })
     
     
-    output$inat_status <- renderText(inat_status())
+    output$inat_status <- renderText(paste("iNaturalist user found:",inat_status()))
 
     markdown_params <- reactive({
         list(
@@ -50,22 +52,29 @@ server <- function(input, output) {
         )
 
     })
+    
+    newsletter_file_location <- eventReactive(input$preview_newsletter, {
+        print("Generating newsletter preview")
+        out_file_name <- paste0("../newsletters/previews/",input$name,".html")
+        out <- render("newsletter_templates/v0_0_1.Rmd",
+                      output_file = out_file_name,
+                      params = markdown_params(),
+        )
+        out
+    })
+    
+    
+    output$preview <- renderUI(HTML(paste(readLines(newsletter_file_location()), collapse="\n")))
+    
 
+    #download html version
     output$downloadReport <- downloadHandler(
         filename = function() {
             paste('my-report.html')
         },
 
         content = function(file) {
-            print(markdown_params())
-
-            #out_file_name <- paste0("newsletters/preview/",input$name,".Rmd")
-
-            out <- render("newsletter_templates/v0_0_1.Rmd",
-                          output_file = file,
-                          params = markdown_params(),
-                          )
-            file.rename(out, file)
+            file.copy(newsletter_file_location(), file)
         }
     )
 }

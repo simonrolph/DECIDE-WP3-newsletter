@@ -1,8 +1,11 @@
-library(httr)
-library(jsonlite)
+#functions for checking if a user exists from a username
 
 #for testing:
-#username <- "simonrolph"
+if(F){
+  library(httr)
+  library(jsonlite)
+  username <- "simonrolph"
+}
 
 check_inat_username <- function(username){
   #print(username)
