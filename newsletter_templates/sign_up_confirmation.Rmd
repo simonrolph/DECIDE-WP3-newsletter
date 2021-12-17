@@ -1,0 +1,33 @@
+---
+title: "Welcome to the DECIDE newsletter"
+output: blastula::blastula_email
+params:
+  name: NULL
+  email: NULL
+  irecord_username: NULL
+  ispot_username: NULL
+  inat_username: NULL
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Hello `r params$name`!
+
+Thank you for signing up to the DECIDE monthly personalised newsletter. We hope you enjoy the newsletters.
+
+## Your details
+
+This is what we know about you: 
+
+Your email is `r params$email`
+
+Your iRecord username is `r params$irecord_username`
+
+Your iSpot username is `r params$ispot_username`
+
+Your iNaturalist username is `r params$inat_username`
+
+Happy recording!
+The DECIDE team

@@ -22,6 +22,25 @@ if(F){
 }
 
 
+
+
+get_records_irecord <- function(username){
+  
+}
+
+get_records_ispot <- function(username){
+  
+}
+
+
+
+
+
+
+
+# get records from inaturalist
+
+# a tweaked version of the get_inat_obs_user function from r package rinat (has handling for getting more than 30 records - aka the limit of records per page)
 get_inat_obs_user_tweaked <- function (username, maxresults = 100,queryextra) 
 {
   if (!curl::has_internet()) {
@@ -63,7 +82,7 @@ get_inat_obs_user_tweaked <- function (username, maxresults = 100,queryextra)
   return(data_out)
 }
 
-
+# function for getting records called in the rmarkdown
 get_records_inat <- function(username){
   query_extra <- "&taxon_id=47157&acc_below=100&captive=false"
   data <- get_inat_obs_user_tweaked(username,100,query_extra)
@@ -81,5 +100,12 @@ get_records_inat <- function(username){
 }
 
 
-#testing
-inat_records <- get_records_inat("simonrolph")
+
+
+
+
+
+
+
+#testing ----------
+#inat_records <- get_records_inat("simonrolph")
