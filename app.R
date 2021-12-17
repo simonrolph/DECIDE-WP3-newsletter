@@ -80,7 +80,7 @@ server <- function(input, output) {
     
     #send a copy of the newsletter preview to the email address
     email_success <- eventReactive(input$send_preview, {
-        print("ok that's good")
+        print("Trying to send email")
         sender <- "simonrolph.ukceh@gmail.com"
         recipients <- c(input$email)
         
