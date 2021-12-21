@@ -29,6 +29,7 @@ get_records_irecord <- function(username){
 }
 
 
+
 get_records_ispot <- function(username,nrecords){
   res = GET("https://api-api.ispotnature.org/public/api_user.php",
             query = list(
