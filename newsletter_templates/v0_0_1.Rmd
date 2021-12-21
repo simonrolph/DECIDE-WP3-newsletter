@@ -43,7 +43,20 @@ Your iNaturalist username is `r params$inat_username`
 
 ### Your recent records
 
-```{r, echo = F}
+```{r get records from websites, echo = F}
+
+#create an empty dataframe with the corresponding headings
+all_records <- data.frame(
+  scientific_name = NA,
+  latitude = NA,
+  longitude = NA,
+  observed_on = NA,
+  url = NA,
+  image_url = NA,
+  confirmed = NA,
+  website = NA
+)[-1,]
+
 #get records from iRecord
 if (!is.na(params$irecord_username)){
   irecord_records <- NULL
@@ -51,21 +64,25 @@ if (!is.na(params$irecord_username)){
 
 #get records from iSpot
 if (!is.na(params$ispot_username)){
-  ispot_records <- NULL
+  ispot_records <- get_records_ispot(params$ispot_username,nrecords = 10)
+  ispot_records$website <- "iSpot"
+  
+  print(ispot_records)
+  
+  all_records <- rbind(all_records,ispot_records)
 }
 
 #get records from iNaturalist
 if (!is.na(params$inat_username)){
-  inat_records <- get_records_inat(params$inat_username)
+  inat_records <- get_records_inat(params$inat_username,nrecords = 10)
   inat_records$website <- "iNaturalist"
+  
+  all_records <- rbind(all_records,inat_records)
 }
 
+```
 
-
-
-#combine records from different sources
-all_records <- inat_records
-
+```{r, echo = F}
 if(nrow(all_records)== 0){
   print("Error: no records")
   knit_exit()
@@ -73,6 +90,9 @@ if(nrow(all_records)== 0){
 
 all_records$observed_on <- all_records$observed_on %>% as.Date()
 
+```
+
+```{r, echo = F}
 
 #identify butterflies vs moths
 all_records$name <- "butterfly" #dummy
@@ -84,6 +104,10 @@ all_records$name <- "butterfly" #dummy
 #group into visits
 
 
+```
+
+```{r, echo = F}
+
 # get decide score
 all_records$decide_score <- apply(all_records[,c("latitude","longitude","name")],1, function(x) {get_decide_score(x[1],x[2],x[3])})
 
@@ -91,15 +115,21 @@ all_records$decide_score <- apply(all_records[,c("latitude","longitude","name")]
 all_records$decide_score[sapply(all_records$decide_score, is.null)] <- NA
 all_records$decide_score <- unlist(all_records$decide_score)
 
-#render a rable
+```
+
+```{r, echo = F}
+#render a table
 kable(all_records[,c("scientific_name","latitude","longitude","observed_on","name","website","decide_score")])
+```
 
-
-
+```{r, echo = F}
 #some highlights that are used in the visualisation:
 best_record <- all_records %>% arrange(desc(decide_score)) %>% head(n=1)
 most_recent_record <- all_records %>% arrange(desc(observed_on)) %>% head(n=1)
 ```
+
+
+
 
 ### Your most valuable record
 
@@ -112,6 +142,9 @@ include_graphics(best_record$image_url)
 ```
 
 Your most valuable record is a record of `r best_record$scientific_name` observed on `r best_record$observed_on` with a DECIDE recording priority value of `r best_record$decide_score`. Wow! Why not make more records in this area? <a href="https://decide.ceh.ac.uk/opts/scoremap/map" target="_blank">Visit the DECIDE recorder tool</a>
+
+
+
 
 ### Your recording timeline
 

@@ -8,6 +8,7 @@ library(keyring)
 library(curl)
 library(shinyvalidate)
 library(shinyjs)
+library(googlesheets4)
 
 source("functions/check_usernames.R")
 
@@ -45,6 +46,7 @@ ui <- fluidPage(
     
     # Application title
     h1("DECIDE: Sign up to your personalised newsletter"),
+    p("In order to send you personalised newsletters about your recording we need to know your email address, and your usernames on your biological recording websites. Please fill out the form below."),
 
     #step 1, about the person
     h4("About you"),
@@ -68,21 +70,30 @@ ui <- fluidPage(
         c("iRecord"="irecord","iSpot"="ispot","iNaturalist" = "inaturalist")
     ),
 
-    conditionalPanel(
-        condition = "input.record_platforms.includes('irecord') == true",
-        textInput("irecord_username","iRecord Username","Simon.p.rolph@gmail.com")
-    ),
-
-    conditionalPanel(
-        condition = "input.record_platforms.includes('ispot') == true",
-        textInput("ispot_username","iSpot Username","simonrolph"),
-        textOutput("ispot_status")
-    ),
-
-    conditionalPanel(
-        condition = "input.record_platforms.includes('inaturalist') == true",
-        textInput("inat_username","iNaturalist Username","simonrolph"),
-        textOutput("inat_status")
+    fluidRow(
+        conditionalPanel(
+            condition = "input.record_platforms.includes('irecord') == true",
+            column(width = 4,
+                   textInput("irecord_username","iRecord Username","Simon.p.rolph@gmail.com"),
+                   htmlOutput("irecord_status")
+            )
+        ),
+        
+        conditionalPanel(
+            condition = "input.record_platforms.includes('ispot') == true",
+            column(width = 4,
+                textInput("ispot_username","iSpot Username","kereddot"),
+                htmlOutput("ispot_status")
+            )
+        ),
+    
+        conditionalPanel(
+            condition = "input.record_platforms.includes('inaturalist') == true",
+            column(width = 4,
+                textInput("inat_username","iNaturalist Username","simonrolph"),
+                htmlOutput("inat_status")
+            )
+        )
     ),
     
     #username checker
@@ -118,7 +129,7 @@ server <- function(input, output) {
     verify_email_code <- eventReactive(input$verify_email,{
         code <- paste(round(runif(4)*8+1),collapse = "")
         code
-        #"1337"
+        "1337"
     })
     
     #generates and sends code via email
@@ -145,17 +156,62 @@ server <- function(input, output) {
     #checks if the code submitted is the same code as the code that was sent via email
     verify_email_submit <- observeEvent(input$submit_email_validation_code,{
         if(input$email_validation_code == verify_email_code()){
-            print("Successful")
+            print("Email verification successful")
             disable("name")
             disable("email")
             hide("verify_email")
             hide("email_validation_code")
             hide("submit_email_validation_code")
+            hide("email_verification_error_message")
+            
+            #use a bootstrap alert to give a positive success message
+            insertUI(
+                selector = "#submit_email_validation_code",
+                where = "afterEnd",
+                ui = div(paste0("Success! We have verfified your email: ",input$email," Please complete the rest of the form about your recording platforms below."),id="email_verification_success_message",class="alert alert-success",role="alert",)
+            )
+            
+            user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes")
+            user_db <- as.data.frame(user_db)
+            
+            if (!input$email %in% user_db) {
+                insertUI(
+                    selector = "#email_verification_success_message",
+                    where = "afterEnd",
+                    ui = p("You haven't signed up to our personalised email newsletter yet")
+                )
+            } else {
+                user_id <- user_db$email == input$email
+                
+                insertUI(
+                    selector = "#email_verification_success_message",
+                    where = "afterEnd",
+                    ui = div(
+                        p("You have already signed up to our personalised email newsletter. Here are the details we have on you:"),
+                        p(paste0("Name: ",user_db[user_id,"name"])),
+                        p(paste0("Email: ",user_db[user_id,"email"])),
+                        p(paste0("iRecord: ",user_db[user_id,"irecord_username"])),
+                        p(paste0("iSpot: ",user_db[user_id,"ispot_username"])),
+                        p(paste0("iNaturalist: ",user_db[user_id,"inat_username"])),
+                        p("If you want to edit these details please continue with the form below.")
+                    )
+                )
+            }
+            
+            
             
             #show information for the user
             
         } else {
-            print("nope")
+            print("Email verification unsuccessful")
+            
+            if (input$submit_email_validation_code == 1){
+                insertUI(
+                    selector = "#submit_email_validation_code",
+                    where = "afterEnd",
+                    ui = div(paste0("Error: incorrect email verification code. We haven't been able to verfify your email. Please try again."),id="email_verification_error_message",class="alert alert-danger",role="alert")
+                )
+            }
             
             #that's not correct try again
         }
@@ -166,7 +222,6 @@ server <- function(input, output) {
     
     #check usernames depending on if the user has said that they record on that platform
     username_status <- eventReactive(input$username_check, {
-        print(input$record_platforms)
         statuses <- list()
         
         if ("irecord" %in% input$record_platforms){
@@ -175,7 +230,7 @@ server <- function(input, output) {
         
         if ("ispot" %in% input$record_platforms){
             key=readLines(file(".secrets/ispot_key.txt",open="r")) 
-            statuses["ispot"] <- check_ispot_username(input$inat_username,key)
+            statuses["ispot"] <- check_ispot_username(input$ispot_username,key)
         }
         
         if ("inaturalist" %in% input$record_platforms){
@@ -186,9 +241,12 @@ server <- function(input, output) {
     })
     
     
-    output$irecord_status <- renderText(paste("iRecord user found:",username_status()["irecord"]))
-    output$ispot_status <- renderText(paste("iSpot user found:",username_status()["ispot"]))
-    output$inat_status <- renderText(paste("iNaturalist user found:",username_status()["inaturalist"]))
+    output$irecord_status <- 
+        renderUI(render_username_check("iRecord",username_status()[["irecord"]],"test"))
+    output$ispot_status <- 
+        renderUI(render_username_check("iSpot",username_status()[["ispot"]],input$ispot_username))
+    output$inat_status <- 
+        renderUI(render_username_check("iNaturalist",username_status()[["inaturalist"]],input$inat_username))
     
     
     # GENERATING NEWSLETTER PREVIEW

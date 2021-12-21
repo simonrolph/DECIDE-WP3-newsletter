@@ -7,12 +7,6 @@ if(F){
   username <- "simonrolph"
 }
 
-
-
-
-
-
-
 check_irecord_username <- function(username,secret){
   client_id <- 'BRCINT'
   auth_header <- paste('USER', client_id, 'SECRET', secret, sep = ':')
@@ -45,5 +39,29 @@ check_ispot_username <- function(username,key){
   
   !(rawToChar(res$content) == "\nInvalid user")
 }
+
+render_username_check <- function(platform,result,username){
+  result <- unname(result)
+  if (is.null(result)) {
+    alertdiv <- div(paste0("Not checked"),class="alert alert-warning",role="alert")
+  } else if(result) {
+    if (platform == "iSpot"){
+      alertdiv <- div(paste0(platform," user found."),a("View profile",target="_blank",href=paste0("https://www.ispotnature.org/view/user/",username)),class="alert alert-success",role="alert")
+    } else if(platform == "iNaturalist"){
+      alertdiv <- div(paste0(platform," user found."),a("View profile",target="_blank",href=paste0("https://www.inaturalist.org/people/",username)),class="alert alert-success",role="alert")
+    } else {
+      alertdiv <- div(paste0(platform," user found."),class="alert alert-success",role="alert")
+    }
+    
+  } else {
+    alertdiv <- div(paste0(platform," user not found."),class="alert alert-danger",role="alert")
+  }
+  
+  alertdiv
+}
+
+
+
+
 
 
