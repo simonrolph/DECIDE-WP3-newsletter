@@ -238,12 +238,14 @@ server <- function(input, output) {
         statuses <- list()
         
         if ("irecord" %in% input$record_platforms){
-            key <- readLines(file(".secrets/irecord_key.txt",open="r")) 
+            key <- readLines(file(".secrets/irecord_key.txt",open="r"))
+            #key <- Sys.getenv("irecord_key") currently doesn't work
             statuses["irecord"] <- check_irecord_username(input$irecord_username,key)
         }
         
         if ("ispot" %in% input$record_platforms){
-            key <- readLines(file(".secrets/ispot_key.txt",open="r")) 
+            key <- readLines(file(".secrets/ispot_key.txt",open="r"))
+            #key <- Sys.getenv("ispot_key")
             statuses["ispot"] <- check_ispot_username(input$ispot_username,key)
         }
         
@@ -344,7 +346,11 @@ server <- function(input, output) {
                                    email = input$email,
                                    irecord_username = input$irecord_username,
                                    ispot_username   = input$ispot_username,
-                                   inat_username    = input$inat_username)
+                                   inat_username    = input$inat_username,
+                                   #irecord_key      = Sys.getenv("irecord_key"), # currently doesn't work
+                                   irecord_key      = readLines(file(".secrets/irecord_key.txt",open="r")), 
+                                   ispot_key        = readLines(file(".secrets/ispot_key.txt",open="r")))
+            
             sheet_append("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",new_user)
             
             print("New user successfully added, sending email...")

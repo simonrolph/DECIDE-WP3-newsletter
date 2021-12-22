@@ -7,6 +7,8 @@ params:
   irecord_username: NA
   ispot_username: NA
   inat_username: NA
+  ispot_key: NA
+  irecord_key: NA
 ---
 
 ```{r include=FALSE}
@@ -59,7 +61,7 @@ all_records <- data.frame(
 
 #get records from iRecord
 if (!is.na(params$irecord_username)){
-  key=readLines(file("../.secrets/irecord_key.txt",open="r")) 
+  key <- readLines(file("../.secrets/irecord_key.txt",open="r"))
   irecord_records <- get_records_irecord(params$irecord_username,nrecords = 10,key)
   irecord_records$website <- "iRecord"
   
@@ -68,7 +70,7 @@ if (!is.na(params$irecord_username)){
 
 #get records from iSpot
 if (!is.na(params$ispot_username)){
-  key=readLines(file("../.secrets/ispot_key.txt",open="r")) 
+  key <- readLines(file("../.secrets/ispot_key.txt",open="r"))
   ispot_records <- get_records_ispot(params$ispot_username,nrecords = 10,key)
   ispot_records$website <- "iSpot"
   
