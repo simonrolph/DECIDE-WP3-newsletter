@@ -24,13 +24,44 @@ if(F){
 
 
 
-get_records_irecord <- function(username){
+get_records_irecord <- function(username,nrecords,secret){
+  #remove spaces (because in iRecord it's presented as "111 111")
+  username <- gsub(" ", "", username, fixed = TRUE)
   
+  #create authentication header
+  client_id <- 'BRCINT'
+  auth_header <- paste('USER', client_id, 'SECRET', secret, sep = ':')
+  
+  # base URL - change this if you're accessing a different warehouse (or the dev warehouse)
+  URLbase = "https://warehouse1.indicia.org.uk/index.php/services/rest/es-irecord-report/_search"
+  
+  q1 <- paste0('{"size": "',nrecords,'","query":{"bool":{"must":[{"term":{"metadata.created_by_id":"',username,'"}}]}}}')
+  
+  data_raw <- get_data(auth_header = auth_header,query = q1,URLbase=URLbase) # get the data
+  
+  data_raw <- data_raw$hits$hits$`_source`
+  
+  data <- data.frame(
+    scientific_name = data_raw$taxon$accepted_name,
+    latitude = data_raw$location$point,
+    longitude = data_raw$location$point,
+    observed_on = data_raw$event$date_start,
+    url = paste0("https://irecord.org.uk/record-details?occurrence_id=",data_raw$id),
+    image_url = paste0("https://warehouse1.indicia.org.uk/upload/med-",data_raw$occurrence$media[[1]]$path),
+    confirmed = data_raw$identification$verification_status == "V"
+  )
+  
+  data$latitude <- data$latitude %>% strsplit(",") %>% sapply(function(x){x[1]})
+  data$longitude <- data$longitude %>% strsplit(",") %>% sapply(function(x){x[2]})
+  
+  data
 }
 
 
 
-get_records_ispot <- function(username,nrecords){
+
+
+get_records_ispot <- function(username,nrecords,key){
   res = GET("https://api-api.ispotnature.org/public/api_user.php",
             query = list(
               key = key,

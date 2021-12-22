@@ -10,7 +10,11 @@ library(shinyvalidate)
 library(shinyjs)
 library(googlesheets4)
 
+
 source("functions/check_usernames.R")
+source("functions/get_data.R")
+
+source("functions/get_records.R")
 
 #note secrets should be set up with environemnt variables: https://support.rstudio.com/hc/en-us/articles/228272368-Managing-your-content-in-RStudio-Connect
 
@@ -43,11 +47,15 @@ gs4_auth(
 # Define UI for application
 ui <- fluidPage(
     shinyjs::useShinyjs(),
+    tags$head(
+        tags$link(rel = "stylesheet", type = "text/css", href = "custom_style.css")
+    ),
     
     # Application title
-    h1("DECIDE: Sign up to your personalised newsletter"),
+    titlePanel("DECIDE: Sign up to your personalised newsletter"),
     p("In order to send you personalised newsletters about your recording we need to know your email address, and your usernames on your biological recording websites. Please fill out the form below."),
 
+    hr(),
     #step 1, about the person
     h4("About you"),
     textInput("name","Name"),
@@ -73,24 +81,28 @@ ui <- fluidPage(
     fluidRow(
         conditionalPanel(
             condition = "input.record_platforms.includes('irecord') == true",
-            column(width = 4,
-                   textInput("irecord_username","iRecord Username","Simon.p.rolph@gmail.com"),
-                   htmlOutput("irecord_status")
+            column(
+                width = 4,
+                textInput("irecord_username","iRecord Indicia Warehouse User ID"),
+                htmlOutput("irecord_status")
             )
         ),
         
         conditionalPanel(
             condition = "input.record_platforms.includes('ispot') == true",
-            column(width = 4,
-                textInput("ispot_username","iSpot Username","kereddot"),
+            column(
+                width = 4,
+                
+                textInput("ispot_username","iSpot Username"),
                 htmlOutput("ispot_status")
             )
         ),
     
         conditionalPanel(
             condition = "input.record_platforms.includes('inaturalist') == true",
-            column(width = 4,
-                textInput("inat_username","iNaturalist Username","simonrolph"),
+            column(
+                width = 4,
+                textInput("inat_username","iNaturalist Username"),
                 htmlOutput("inat_status")
             )
         )
@@ -123,6 +135,7 @@ server <- function(input, output) {
     iv$add_rule("name", sv_required())
     iv$add_rule("email", sv_required())
     iv$add_rule("email", sv_email())
+    iv$add_rule("record_platforms", sv_required())
     iv$enable()
     
     #generate code
@@ -225,11 +238,12 @@ server <- function(input, output) {
         statuses <- list()
         
         if ("irecord" %in% input$record_platforms){
-            statuses["irecord"] <- FALSE
+            key <- readLines(file(".secrets/irecord_key.txt",open="r")) 
+            statuses["irecord"] <- check_irecord_username(input$irecord_username,key)
         }
         
         if ("ispot" %in% input$record_platforms){
-            key=readLines(file(".secrets/ispot_key.txt",open="r")) 
+            key <- readLines(file(".secrets/ispot_key.txt",open="r")) 
             statuses["ispot"] <- check_ispot_username(input$ispot_username,key)
         }
         
@@ -242,7 +256,7 @@ server <- function(input, output) {
     
     
     output$irecord_status <- 
-        renderUI(render_username_check("iRecord",username_status()[["irecord"]],"test"))
+        renderUI(render_username_check("iRecord",username_status()[["irecord"]]))
     output$ispot_status <- 
         renderUI(render_username_check("iSpot",username_status()[["ispot"]],input$ispot_username))
     output$inat_status <- 

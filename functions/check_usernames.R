@@ -8,15 +8,31 @@ if(F){
 }
 
 check_irecord_username <- function(username,secret){
+  #remove spaces (because in iRecord it's presented as "111 111")
+  username <- gsub(" ", "", username, fixed = TRUE)
+  
+  #create authentication header
   client_id <- 'BRCINT'
   auth_header <- paste('USER', client_id, 'SECRET', secret, sep = ':')
   
   # base URL - change this if you're accessing a different warehouse (or the dev warehouse)
   URLbase = "https://warehouse1.indicia.org.uk/index.php/services/rest/es-irecord-report/_search"
   
-  q1 <- '{"size": "1","query":{"bool":{"must":[{"term":{"_id":"iBRC11293027"}}]}}}'
-  single_record <- get_data(auth_header = auth_header,query = q1) # get the data
+  #build query
+  q1 <- paste0('{"size": "0","query":{"bool":{"must":[{"term":{"metadata.created_by_id":"',username,'"}}]}}}')
   
+  ##make query
+  user_check <- get_data(auth_header = auth_header,query = q1,URLbase=URLbase) # get the data
+  
+  #check if the result has a total number of hits, and that total number of hits is > 0
+  username_result <- FALSE
+  if (!is.null(user_check$hits$total)) {
+    if(user_check$hits$total>0){
+      username_result <- TRUE
+    }
+  }
+  
+  username_result
 }
 
 check_inat_username <- function(username){
@@ -40,7 +56,7 @@ check_ispot_username <- function(username,key){
   !(rawToChar(res$content) == "\nInvalid user")
 }
 
-render_username_check <- function(platform,result,username){
+render_username_check <- function(platform,result,username = NA){
   result <- unname(result)
   if (is.null(result)) {
     alertdiv <- div(paste0("Not checked"),class="alert alert-warning",role="alert")

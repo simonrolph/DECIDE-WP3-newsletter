@@ -1,4 +1,4 @@
-get_data <- function(auth_header,query){
+get_data <- function(auth_header,query,URLbase){
   h <- new_handle()
   
   #add the authentication header

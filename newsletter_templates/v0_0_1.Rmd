@@ -43,7 +43,7 @@ Your iNaturalist username is `r params$inat_username`
 
 ### Your recent records
 
-```{r get records from websites, echo = F}
+```{r get records from websites, echo = F,warning=FALSE}
 
 #create an empty dataframe with the corresponding headings
 all_records <- data.frame(
@@ -59,15 +59,18 @@ all_records <- data.frame(
 
 #get records from iRecord
 if (!is.na(params$irecord_username)){
-  irecord_records <- NULL
+  key=readLines(file("../.secrets/irecord_key.txt",open="r")) 
+  irecord_records <- get_records_irecord(params$irecord_username,nrecords = 10,key)
+  irecord_records$website <- "iRecord"
+  
+  all_records <- rbind(all_records,irecord_records)
 }
 
 #get records from iSpot
 if (!is.na(params$ispot_username)){
-  ispot_records <- get_records_ispot(params$ispot_username,nrecords = 10)
+  key=readLines(file("../.secrets/ispot_key.txt",open="r")) 
+  ispot_records <- get_records_ispot(params$ispot_username,nrecords = 10,key)
   ispot_records$website <- "iSpot"
-  
-  print(ispot_records)
   
   all_records <- rbind(all_records,ispot_records)
 }
@@ -89,6 +92,9 @@ if(nrow(all_records)== 0){
 }
 
 all_records$observed_on <- all_records$observed_on %>% as.Date()
+
+#remove ones with NA date
+all_records <- all_records %>% filter(!is.na(observed_on))
 
 ```
 
