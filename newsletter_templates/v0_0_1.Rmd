@@ -22,11 +22,14 @@ library(htmltools)
 
 ```
 
-## Hello `r params$name`
+<div>
+```{r,echo=FALSE}
+h1(paste("Hello",params$name))
 
-Date: `r Sys.Date()`
+p(paste("Date:",Sys.Date()))
 
-### About you
+h3("About you")
+```
 
 This is what we know about you: 
 
@@ -38,13 +41,15 @@ Your iSpot username is `r params$ispot_username`
 
 Your iNaturalist username is `r params$inat_username`
 
+</div>
+
 ```{r get records from websites, echo = F,warning=FALSE}
 
 #create an empty dataframe with the corresponding headings
 all_records <- data.frame(
   scientific_name = "  ",
-  latitude = "",
-  longitude = "",
+  latitude = 0,
+  longitude = 0,
   observed_on = "",
   url = "",
   image_url = "",
@@ -123,19 +128,20 @@ best_record <- all_records %>% arrange(desc(decide_score)) %>% head(n=1)
 most_recent_record <- all_records %>% arrange(desc(observed_on)) %>% head(n=1)
 ```
 
-
+<div>
 ```{r table of records, echo = F}
 h3("Your recent records")
 #render a table
 kable(all_records[,c("scientific_name","latitude","longitude","observed_on","name","website","decide_score")])
 ```
+</div>
 
-
+<div id="most-valuable-record" class="data-story">
 ```{r most valuable record, echo=FALSE,warning = F}
-
+  
 h3("Your most valuable record")
 
-include_graphics(best_record$image_url)
+img(src = best_record$image_url)
 
 p("Your most valuable record is a record of ",
   em(best_record$scientific_name),
@@ -148,12 +154,11 @@ p("Your most valuable record is a record of ",
     href="https://decide.ceh.ac.uk/opts/scoremap/map",
     target="_blank"))
 
-
 ```
+</div>
 
-
-
-```{r your recording timeline, echo=FALSE,warning = F}
+<div id="recording_timeline" class="data-story">
+```{r recording timeline, echo=FALSE,warning = F}
 
 h3("Your recording timeline")
 
@@ -180,13 +185,15 @@ p("You most recent record of",
   )
 
 ```
-
+</div>
 
 <hr>
 
+<div>
 This newsletter was generated on `r Sys.time()`
 
 Don\'t want to receive these emails any more? <a>Unsubscribe from the DECIDE personalised newsletter</a>
+</div>
 
 
 

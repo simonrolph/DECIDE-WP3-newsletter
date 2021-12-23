@@ -51,8 +51,8 @@ get_records_irecord <- function(username,nrecords,secret){
     confirmed = data_raw$identification$verification_status == "V"
   )
   
-  data$latitude <- data$latitude %>% strsplit(",") %>% sapply(function(x){x[1]})
-  data$longitude <- data$longitude %>% strsplit(",") %>% sapply(function(x){x[2]})
+  data$latitude <- data$latitude %>% strsplit(",") %>% sapply(function(x){x[1]})%>% as.numeric()
+  data$longitude <- data$longitude %>% strsplit(",") %>% sapply(function(x){x[2]}) %>% as.numeric()
   
   data
 }
@@ -73,8 +73,8 @@ get_records_ispot <- function(username,nrecords,key){
   data <- data$Observations
   
   #get lat and long from the geospatial column
-  data$latitude <- data$Geospatial["Latitude"] %>% as.character()
-  data$longitude <- data$Geospatial["Longitude"] %>% as.character()
+  data$latitude <- data$Geospatial["Latitude"] %>% as.character() %>% as.numeric()
+  data$longitude <- data$Geospatial["Longitude"] %>% as.character() %>% as.numeric()
   
   #get the standard column names
   data <- data %>%

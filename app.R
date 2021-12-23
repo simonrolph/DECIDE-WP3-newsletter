@@ -28,7 +28,7 @@ if(F){
     gs4_auth()
     list.files(".secrets/") 
     
-    #email
+    #Gmail
     create_smtp_creds_key(
         id = "gmail",
         provider = "gmail",
@@ -37,7 +37,7 @@ if(F){
 }
 
 
-# sheets reauth with specified token and email address
+# sheets reauth with specified token and email address (run each time when app is run)
 gs4_auth(
     cache = ".secrets",
     email = "simonrolph.ukceh@gmail.com"
@@ -46,7 +46,7 @@ gs4_auth(
 
 # Define UI for application
 ui <- fluidPage(
-    shinyjs::useShinyjs(),
+    shinyjs::useShinyjs(), # in order to disable inputs
     tags$head(
         tags$link(rel = "stylesheet", type = "text/css", href = "custom_style.css")
     ),
@@ -63,7 +63,7 @@ ui <- fluidPage(
     
     actionButton("verify_email","Send verification code"),
     
-    #email ferification
+    #email verification
     conditionalPanel(
         condition = "input.verify_email > 0",
         textInput("email_validation_code","Email validation code"),
@@ -78,6 +78,7 @@ ui <- fluidPage(
         c("iRecord"="irecord","iSpot"="ispot","iNaturalist" = "inaturalist")
     ),
 
+    #column for each platform (conditional on whether it's been selected in the record_platforms input)
     fluidRow(
         conditionalPanel(
             condition = "input.record_platforms.includes('irecord') == true",
@@ -138,7 +139,7 @@ server <- function(input, output) {
     iv$add_rule("record_platforms", sv_required())
     iv$enable()
     
-    #generate code
+    #generate email verification code
     verify_email_code <- eventReactive(input$verify_email,{
         code <- paste(round(runif(4)*8+1),collapse = "")
         code
@@ -156,6 +157,8 @@ server <- function(input, output) {
             print("sending email")
             sender <- "simonrolph.ukceh@gmail.com"
             recipients <- c(input$email)
+            
+            #send the email: I comment this out when testing and make verify_email_code() output the same code each time
             # smtp_send(email_obj,
             #           from = sender,
             #           to = recipients,
@@ -168,6 +171,8 @@ server <- function(input, output) {
 
     #checks if the code submitted is the same code as the code that was sent via email
     verify_email_submit <- observeEvent(input$submit_email_validation_code,{
+        
+        #if successful then lock the name and email inputs and hide the email verification controls
         if(input$email_validation_code == verify_email_code()){
             print("Email verification successful")
             disable("name")
@@ -184,9 +189,11 @@ server <- function(input, output) {
                 ui = div(paste0("Success! We have verfified your email: ",input$email," Please complete the rest of the form about your recording platforms below."),id="email_verification_success_message",class="alert alert-success",role="alert",)
             )
             
+            #download the user database
             user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes")
             user_db <- as.data.frame(user_db)
             
+            # check if the user is already in the database, if they are then show the information we have on them.
             if (!input$email %in% user_db) {
                 insertUI(
                     selector = "#email_verification_success_message",
@@ -211,10 +218,7 @@ server <- function(input, output) {
                 )
             }
             
-            
-            
-            #show information for the user
-            
+        #show information for the user
         } else {
             print("Email verification unsuccessful")
             
@@ -225,8 +229,6 @@ server <- function(input, output) {
                     ui = div(paste0("Error: incorrect email verification code. We haven't been able to verfify your email. Please try again."),id="email_verification_error_message",class="alert alert-danger",role="alert")
                 )
             }
-            
-            #that's not correct try again
         }
     })
     
@@ -254,7 +256,7 @@ server <- function(input, output) {
         statuses
     })
     
-    
+    # render the username check statuses as boostrap alerts using username_status() function from functions/check_usernames.R
     output$irecord_status <- 
         renderUI(render_username_check("iRecord",username_status()[["irecord"]]))
     output$ispot_status <- 
