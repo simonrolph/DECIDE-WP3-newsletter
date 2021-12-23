@@ -24,6 +24,13 @@ check_irecord_username <- function(username,secret){
   ##make query
   user_check <- get_data(auth_header = auth_header,query = q1,URLbase=URLbase) # get the data
   
+  #return NA if failed to connect
+  if(!is.null(user_check$code)){
+    if(user_check$code == 401){
+      return(NA)
+    }
+  }
+  
   #check if the result has a total number of hits, and that total number of hits is > 0
   username_result <- FALSE
   if (!is.null(user_check$hits$total)) {
@@ -56,7 +63,7 @@ check_ispot_username <- function(username,key){
   print(rawToChar(res$content))
   
   if(rawToChar(res$content) == "\nInvalid API Key"){
-    return(FALSE)
+    return(NA)
   }
   
   !(rawToChar(res$content) == "\nInvalid user")
@@ -66,6 +73,8 @@ render_username_check <- function(platform,result,username = NA){
   result <- unname(result)
   if (is.null(result)) {
     alertdiv <- div(paste0("Not checked"),class="alert alert-warning",role="alert")
+  } else if(is.na(result)){
+    alertdiv <- div(paste0("Failed to connect"),class="alert alert-danger",role="alert")
   } else if(result) {
     if (platform == "iSpot"){
       alertdiv <- div(paste0(platform," user found."),a("View profile",target="_blank",href=paste0("https://www.ispotnature.org/view/user/",username)),class="alert alert-success",role="alert")
