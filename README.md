@@ -41,6 +41,8 @@ The user can sign up to the mailing list which adds their details to the google 
 
 ## Generating email content
 
+### Creating the markdown document
+
 The email is generated using a parameterised R markdown document with parameters corresponding to inputs on the shiny app. The templates are stored as `.Rmd` files in the `newsletter_templates/` folder, and are versioned. The YAML looks something like this:
 
 ```
@@ -53,23 +55,56 @@ params:
   irecord_username: NULL
   ispot_username: NULL
   inat_username: NULL
+  ispot_key: NA
+  irecord_key: NA  
 ---
 ```
 
-There are useful functions (mostly for getting data from APIs) in the `functions/` folder.
-
 The markdown document is rendered as a blastula_email format which correctly formats markdown for use in an email message. See: https://www.infoworld.com/article/3611858/how-to-send-emails-with-graphics-from-r.html
 
-On rendering, the document in general does these actions:
+The markdown document, broadly does the following:
 
- * gets records for the user by their username (from releval iRecord / iSpot / iNaturalist API)
- * gets DECIDE score from the DECIDE app endpoint
- * does some data wrangling to cluster records into 'visits'
- * produces visualisations
+ * Gets records for the user by their username (from relevant iRecord / iSpot / iNaturalist API).
+ * Selects the miniumum required columns and formats them to be consitent. The columns are:
+   * `scientific_name` - species identifier - hopefully won't have issues here but different systems might use different scientific names, both iSpot and iRecord use the NHM key but iNaturalist is different.
+   * `latitude` - decimal latitude
+   * `longitude` - decimal longitude
+   * `observed_on` - date observed on (time of record is dropped)
+   * `url` - the url of the record on each recording platform
+   * `image_url` - the url of the image associated with the record (if applicable)
+   * `confirmed` - a TRUE or FALSE as to whether the record has been verified in any way (obviously different for each platform)
+   * `website` - which website the record came from (values are: `"iRecord"` / `"iSpot"` / `"iNaturalist"`)
+ * Gets the DECIDE score for each record from the DECIDE app endpoint
+ * Produces a series visualisations / datastories / prompts (need a term to describe each of these discrete units)
+
+There are useful functions (mostly for getting data from APIs) in the `functions/` folder.
+
+Each visualisation is framed in the rmarkdown like so:
+
+```
+<div id="another data visualisation" class="data-story">
+```{r another data visualisation, echo=FALSE,warning = F}
+
+h3("another data visualisation")
+
+data visulalisation code goes here (ggplots, maps,
+
+#how to add images
+img(src = all_records$image_url[1])
+
+a("Visit the DECIDE recorder tool",
+    href="https://decide.ceh.ac.uk/opts/scoremap/map",
+    target="_blank")
+
+\```
+</div>
+```
+
+It's important that everything in the data visualisation is contained within one code chunk, that means we can control whether this chunk is rendered through something like this `eval = params$should_this_chunk_be_evaluated`. The chunk also needs to be in the `<div>` written just before and after the code chunk with the class `"data-story"` and an id. This is required for post email generation 'shuffling' to reorganise the prompts.
  
 ## Storing data
 
-Nothing set here but I think it would be good to 'database' from a Google sheet or something (using https://github.com/tidyverse/googlesheets4). That means we can view the data separately and easily make edits if needed.
+Data is stored in a Google Sheets spreadsheet using https://github.com/tidyverse/googlesheets4. That means we can view the data separately and easily make edits if needed.
 
 ## Sending emails
 
