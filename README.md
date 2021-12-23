@@ -8,13 +8,39 @@ This peice of work is part of work package 3 of the DECIDE project which focusse
 
 ## Set up
 
+### Publishing the shiny app
+
+The app will be published using Rstudio Connect https://connect-apps.ceh.ac.uk/connect
+
 ### Email authentication
 
-### iRecord authentication
+Email authentication is managed using the `blastula` package. A 'key' is generated using the `create_smtp_creds_key(id = "gmail", provider = "gmail", user = "eaxample@example.com)` function. You will need to allow less secure apps to use your google account https://support.google.com/accounts/answer/6010255?hl=en . I am currently using a dummy gmail account for testing purposes but may wish to change this to a different email account for the live product. Once `create_smtp_creds_key()` has created the key, you can then use this key like this `smtp_send(... credentials = creds_key("gmail")` where the argument to `creds_key` is the same as you set for the `id` argument you set for `create_smtp_creds_key`.
 
-### iSpot authentication
+Unsure how this will transfer when deploying to the live server.
+
+### iRecord and iSpot authentication
+
+Both iRecord and iSpot need authentication for API requests.
+
+We are using the elasticsearch endpoint for getting data from iRecord. This requires a 'secret' which is stored in the `.Renviron` file. On the live deployment the password can be stored in environment variables: https://indicia-docs.readthedocs.io/en/latest/developing/rest-web-services/elasticsearch.html
+
+For further information see: https://github.com/BiologicalRecordsCentre/interacting-with-R and https://indicia-docs.readthedocs.io/en/latest/developing/rest-web-services/elasticsearch.html
 
 ### Google sheets authentication
+
+Authentication for google sheets is sorted using `gargle` R package: https://gargle.r-lib.org/ 
+
+The following code creates a secret which can then be loaded from file. the `.secrets` folder is git ignored.
+```
+# designate project-specific cache
+options(gargle_oauth_cache = ".secrets")
+# check the value of the option, if you like
+gargle::gargle_oauth_cache()
+gs4_auth()
+list.files(".secrets/")
+```
+
+Unsure how this will transfer when deploying to the live server.
 
 ## Collecting and storing user information
 
@@ -101,10 +127,25 @@ a("Visit the DECIDE recorder tool",
 ```
 
 It's important that everything in the data visualisation is contained within one code chunk, that means we can control whether this chunk is rendered through something like this `eval = params$should_this_chunk_be_evaluated`. The chunk also needs to be in the `<div>` written just before and after the code chunk with the class `"data-story"` and an id. This is required for post email generation 'shuffling' to reorganise the prompts.
+
+### Sending the email
+
+The email is rendered using the `render()` function and saved to file with the reactive `newsletter_file_location()`. Is is then sent using the following command:
+```
+email_obj <- blastula:::cid_images(newsletter_file_location())
+        
+smtp_send(email_obj,
+          from = sender,
+          to = recipients,
+          subject = "DECIDE newsletter",
+          credentials = creds_key("gmail")
+```
+
+The `cid_images` function does something with images to make them suitable for sending via email (I believe).
  
 ## Storing data
 
-Data is stored in a Google Sheets spreadsheet using https://github.com/tidyverse/googlesheets4. That means we can view the data separately and easily make edits if needed.
+Data is stored in a Google Sheets spreadsheet using https://github.com/tidyverse/googlesheets4. That means we can view the data separately and easily make edits if needed. It is a simple spreadsheet with columns for each user variable (name, email and usernames for each platform)
 
 ## Sending emails
 
