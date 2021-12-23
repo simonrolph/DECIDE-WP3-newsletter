@@ -11,20 +11,15 @@ params:
   irecord_key: NA
 ---
 
-```{r include=FALSE}
-#Notes:
-
-# can't have javascript if we're sendint by email hence why theme, highlight and mathjax are set to null in the YAML, see: https://stackoverflow.com/questions/29370306/how-to-render-html-from-rmarkdown-without-javascript-in-output
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
 
 source("../functions/get_records.R")
 source("../functions/get_decide_score.R")
 library(ggplot2)
 library(dplyr)
+library(htmltools)
 
-```
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Hello `r params$name`
@@ -43,38 +38,36 @@ Your iSpot username is `r params$ispot_username`
 
 Your iNaturalist username is `r params$inat_username`
 
-### Your recent records
-
 ```{r get records from websites, echo = F,warning=FALSE}
 
 #create an empty dataframe with the corresponding headings
 all_records <- data.frame(
-  scientific_name = NA,
-  latitude = NA,
-  longitude = NA,
-  observed_on = NA,
-  url = NA,
-  image_url = NA,
-  confirmed = NA,
-  website = NA
+  scientific_name = "  ",
+  latitude = "",
+  longitude = "",
+  observed_on = "",
+  url = "",
+  image_url = "",
+  confirmed = FALSE,
+  website = ""
 )[-1,]
 
 #get records from iRecord
 if (!is.na(params$irecord_username)){
-  key <- readLines(file("../.secrets/irecord_key.txt",open="r"))
-  irecord_records <- get_records_irecord(params$irecord_username,nrecords = 10,key)
+  #key <- readLines(file("../.secrets/irecord_key.txt",open="r"))
+  irecord_records <- get_records_irecord(params$irecord_username,nrecords = 10,params$irecord_key)
   irecord_records$website <- "iRecord"
   
-  all_records <- rbind(all_records,irecord_records)
+  all_records <- bind_rows(all_records,irecord_records)
 }
 
 #get records from iSpot
 if (!is.na(params$ispot_username)){
-  key <- readLines(file("../.secrets/ispot_key.txt",open="r"))
-  ispot_records <- get_records_ispot(params$ispot_username,nrecords = 10,key)
+  #key <- readLines(file("../.secrets/ispot_key.txt",open="r"))
+  ispot_records <- get_records_ispot(params$ispot_username,nrecords = 10,params$ispot_key)
   ispot_records$website <- "iSpot"
   
-  all_records <- rbind(all_records,ispot_records)
+  all_records <- bind_rows(all_records,ispot_records)
 }
 
 #get records from iNaturalist
@@ -82,12 +75,13 @@ if (!is.na(params$inat_username)){
   inat_records <- get_records_inat(params$inat_username,nrecords = 10)
   inat_records$website <- "iNaturalist"
   
-  all_records <- rbind(all_records,inat_records)
+  all_records <- bind_rows(all_records,inat_records)
 }
 
 ```
 
-```{r, echo = F}
+```{r data cleaning, echo = F}
+
 if(nrow(all_records)== 0){
   print("Error: no records")
   knit_exit()
@@ -97,10 +91,6 @@ all_records$observed_on <- all_records$observed_on %>% as.Date()
 
 #remove ones with NA date
 all_records <- all_records %>% filter(!is.na(observed_on))
-
-```
-
-```{r, echo = F}
 
 #identify butterflies vs moths
 all_records$name <- "butterfly" #dummy
@@ -114,7 +104,7 @@ all_records$name <- "butterfly" #dummy
 
 ```
 
-```{r, echo = F}
+```{r get decide score, echo = F}
 
 # get decide score
 all_records$decide_score <- apply(all_records[,c("latitude","longitude","name")],1, function(x) {get_decide_score(x[1],x[2],x[3])})
@@ -125,40 +115,50 @@ all_records$decide_score <- unlist(all_records$decide_score)
 
 ```
 
-```{r, echo = F}
-#render a table
-kable(all_records[,c("scientific_name","latitude","longitude","observed_on","name","website","decide_score")])
-```
 
-```{r, echo = F}
+
+```{r highlight dataframes, echo = F}
 #some highlights that are used in the visualisation:
 best_record <- all_records %>% arrange(desc(decide_score)) %>% head(n=1)
 most_recent_record <- all_records %>% arrange(desc(observed_on)) %>% head(n=1)
 ```
 
 
+```{r table of records, echo = F}
+h3("Your recent records")
+#render a table
+kable(all_records[,c("scientific_name","latitude","longitude","observed_on","name","website","decide_score")])
+```
 
 
-### Your most valuable record
+```{r most valuable record, echo=FALSE,warning = F}
 
-```{r,echo=FALSE}
-
-
+h3("Your most valuable record")
 
 include_graphics(best_record$image_url)
 
+p("Your most valuable record is a record of ",
+  em(best_record$scientific_name),
+  " observed on ",
+  best_record$observed_on,
+  " with a DECIDE recording priority value of ",
+  best_record$decide_score,
+  ". Wow! Why not make more records in this area?",
+  a("Visit the DECIDE recorder tool",
+    href="https://decide.ceh.ac.uk/opts/scoremap/map",
+    target="_blank"))
+
+
 ```
 
-Your most valuable record is a record of `r best_record$scientific_name` observed on `r best_record$observed_on` with a DECIDE recording priority value of `r best_record$decide_score`. Wow! Why not make more records in this area? <a href="https://decide.ceh.ac.uk/opts/scoremap/map" target="_blank">Visit the DECIDE recorder tool</a>
 
 
+```{r your recording timeline, echo=FALSE,warning = F}
 
+h3("Your recording timeline")
 
-### Your recording timeline
+p("Have been recording more strategically recently? Let\'s have a look!")
 
-Have been recording more strategically recently? Let\'s have a look!
-
-```{r,echo=FALSE,warning = F}
 all_records %>% ggplot(aes(x = observed_on,y = decide_score,label = scientific_name))+
   geom_point()+
   scale_x_date()+
@@ -171,9 +171,16 @@ if (most_recent_record$decide_score > mean(all_records$decide_score,na.rm = T)){
   recent_verses_average <- "was below your average recording priority."
 }
 
+p("You most recent record of",
+  most_recent_record$scientific_name,
+  recent_verses_average,
+  a("Visit the DECIDE recorder tool",
+    href="https://decide.ceh.ac.uk/opts/scoremap/map",
+    target="_blank")
+  )
+
 ```
 
-You most recent record of `r most_recent_record$scientific_name` `r recent_verses_average` <a href="https://decide.ceh.ac.uk/opts/scoremap/map" target="_blank">Visit the DECIDE recorder tool</a>
 
 <hr>
 

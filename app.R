@@ -238,13 +238,11 @@ server <- function(input, output) {
         statuses <- list()
         
         if ("irecord" %in% input$record_platforms){
-            key <- readLines(file(".secrets/irecord_key.txt",open="r"))
-            #key <- Sys.getenv("irecord_key") #currently doesn't work
+            key <- gsub("Â","",Sys.getenv("irecord_key"))
             statuses["irecord"] <- check_irecord_username(input$irecord_username,key)
         }
         
         if ("ispot" %in% input$record_platforms){
-            #key <- readLines(file(".secrets/ispot_key.txt",open="r"))
             key <- Sys.getenv("ispot_key")
             statuses["ispot"] <- check_ispot_username(input$ispot_username,key)
         }
@@ -276,7 +274,9 @@ server <- function(input, output) {
             ispot_username = 
                 ifelse("ispot" %in% input$record_platforms,input$ispot_username,NA),
             inat_username = 
-                ifelse("inaturalist" %in% input$record_platforms,input$inat_username,NA)
+                ifelse("inaturalist" %in% input$record_platforms,input$inat_username,NA),
+            irecord_key      = gsub("Â","",Sys.getenv("irecord_key")),
+            ispot_key        = Sys.getenv("ispot_key")
         )
     })
     
@@ -346,10 +346,7 @@ server <- function(input, output) {
                                    email = input$email,
                                    irecord_username = input$irecord_username,
                                    ispot_username   = input$ispot_username,
-                                   inat_username    = input$inat_username,
-                                   #irecord_key      = Sys.getenv("irecord_key"), # currently doesn't work
-                                   irecord_key      = readLines(file(".secrets/irecord_key.txt",open="r")), 
-                                   ispot_key        = rSys.getenv("ispot_key"))
+                                   inat_username    = input$inat_username)
             
             sheet_append("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",new_user)
             

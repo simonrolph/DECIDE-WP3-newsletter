@@ -73,8 +73,8 @@ get_records_ispot <- function(username,nrecords,key){
   data <- data$Observations
   
   #get lat and long from the geospatial column
-  data$latitude <- data$Geospatial["Latitude"]
-  data$longitude <- data$Geospatial["Longitude"]
+  data$latitude <- data$Geospatial["Latitude"] %>% as.character()
+  data$longitude <- data$Geospatial["Longitude"] %>% as.character()
   
   #get the standard column names
   data <- data %>%
@@ -86,9 +86,7 @@ get_records_ispot <- function(username,nrecords,key){
            image_url = `Primary image`,
            confirmed = Agreements)
   
-  data$observed_on <- data$observed_on %>% as.POSIXct(format = "%Y-%m-%d %H:%M:%OS") %>% as.Date()
-  #remove entries without a date
-  data <- data %>% filter(!is.na(date))
+  data$observed_on <- data$observed_on %>% as.POSIXct(format = "%Y-%m-%d %H:%M:%OS") %>% as.Date() %>% as.character()
   
   #confirmed records are records with at least 1 agreement
   data$confirmed <- data$confirmed>0
