@@ -29,12 +29,24 @@ if(F){
     list.files(".secrets/") 
     
     #Gmail
+    #create using the original create_smtp_creds function (don't work on the live app)
     create_smtp_creds_key(
         id = "gmail",
         provider = "gmail",
         user = "simonrolph.ukceh@gmail.com",
+        overwrite = T
     )
 }
+
+#adjusted version that takes password from environment variables for the live app
+source("functions/create_smtp_creds_key_with_password.R")
+create_smtp_creds_key_with_password(
+    id = "gmail",
+    provider = "gmail",
+    user = "simonrolph.ukceh@gmail.com",
+    password = Sys.getenv("gmail_password"),
+    overwrite = TRUE
+)
 
 
 # sheets reauth with specified token and email address (run each time when app is run)
@@ -128,6 +140,14 @@ ui <- fluidPage(
 )
     
 
+
+
+
+
+
+
+
+
 # Define server logic 
 server <- function(input, output) {
     # VERIFYING EMAIL
@@ -137,14 +157,14 @@ server <- function(input, output) {
     iv$add_rule("name", sv_required())
     iv$add_rule("email", sv_required())
     iv$add_rule("email", sv_email())
-    iv$add_rule("record_platforms", sv_required())
+    #iv$add_rule("record_platforms", sv_required())
     iv$enable()
     
     #generate email verification code
     verify_email_code <- eventReactive(input$verify_email,{
         code <- paste(round(runif(4)*8+1),collapse = "")
         code
-        "1337"
+        #"1337"
     })
     
     #generates and sends code via email
@@ -160,12 +180,12 @@ server <- function(input, output) {
             recipients <- c(input$email)
             
             #send the email: I comment this out when testing and make verify_email_code() output the same code each time
-            # smtp_send(email_obj,
-            #           from = sender,
-            #           to = recipients,
-            #           subject = "DECIDE email verification code",
-            #           credentials = creds_key("gmail")
-            # )
+            smtp_send(email_obj,
+                      from = sender,
+                      to = recipients,
+                      subject = "DECIDE email verification code",
+                      credentials = creds_key("gmail")
+            )
             
         } 
     })
