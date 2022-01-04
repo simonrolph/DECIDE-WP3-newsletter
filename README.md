@@ -22,7 +22,7 @@ Unsure how this will transfer when deploying to the live server.
 
 Both iRecord and iSpot need authentication for API requests.
 
-We are using the elasticsearch endpoint for getting data from iRecord. This requires a 'secret' which is stored in the `.Renviron` file. On the live deployment the password can be stored in environment variables: https://indicia-docs.readthedocs.io/en/latest/developing/rest-web-services/elasticsearch.html
+We are using the elasticsearch endpoint for getting data from iRecord. This requires a 'secret' which is stored in the `.Renviron` file. On the live deployment the password can be stored in environment variables: https://support.rstudio.com/hc/en-us/articles/360016606613-Environment-variables-on-RStudio-Connect
 
 For further information see: https://github.com/BiologicalRecordsCentre/interacting-with-R and https://indicia-docs.readthedocs.io/en/latest/developing/rest-web-services/elasticsearch.html
 
