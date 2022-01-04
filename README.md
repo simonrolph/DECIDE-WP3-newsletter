@@ -10,7 +10,12 @@ This peice of work is part of work package 3 of the DECIDE project which focusse
 
 ### Publishing the shiny app
 
-The app will be published using Rstudio Connect https://connect-apps.ceh.ac.uk/connect
+The app is published using Rstudio Connect https://connect-apps.ceh.ac.uk/connect
+
+To publish the app from Studio Desktop (can't publish from DataLabs) click on the connect button which brings up this dialogue:
+![image](https://user-images.githubusercontent.com/17750766/148047593-70aa0837-4543-4ff2-af29-767bad0a89c9.png)
+
+You want to untick the `.Renviron` file because we don't want to 'publish' the secrets (although they are not actually accessible to the user it's best to use the Rstudio Connect environment variables (see section on iRecord/iSpot authentication). You can publish the `.secrets` folder which contains the google sheets authententication 
 
 ### Email authentication
 
@@ -40,7 +45,7 @@ gs4_auth()
 list.files(".secrets/")
 ```
 
-Unsure how this will transfer when deploying to the live server.
+Following this guide: https://josiahparry.medium.com/googlesheets4-authentication-for-deployment-9e994b4c81d6 the `.secrets` folder is 'published' the live app (users can't access the folder).
 
 ## Collecting and storing user information
 
