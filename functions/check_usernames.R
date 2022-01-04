@@ -8,6 +8,9 @@ if(F){
 }
 
 check_irecord_username <- function(username,secret){
+  if (nchar(username)==0){
+    return(F)
+  }
   #remove spaces (because in iRecord it's presented as "111 111")
   username <- gsub(" ", "", username, fixed = TRUE)
   
@@ -43,6 +46,9 @@ check_irecord_username <- function(username,secret){
 }
 
 check_inat_username <- function(username){
+  if (nchar(username)==0){
+    return(F)
+  }
   #print(username)
   res = GET(paste0("https://api.inaturalist.org/v1/users/",username))
   #print(res)
@@ -52,6 +58,10 @@ check_inat_username <- function(username){
 
 
 check_ispot_username <- function(username,key){
+  if (nchar(username)==0){
+    return(F)
+  }
+  
   #print(username)
   res = GET("https://api-api.ispotnature.org/public/api_user.php",
             query = list(
