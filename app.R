@@ -10,11 +10,11 @@ library(shinyvalidate)
 library(shinyjs)
 library(googlesheets4)
 
-
 source("functions/check_usernames.R")
 source("functions/get_data.R")
 
 source("functions/get_records.R")
+
 
 #note secrets should be set up with environemnt variables: https://support.rstudio.com/hc/en-us/articles/228272368-Managing-your-content-in-RStudio-Connect
 
@@ -38,15 +38,38 @@ if(F){
     )
 }
 
+
+
+#method 1
 #adjusted version that takes password from environment variables for the live app
-source("functions/create_smtp_creds_key_with_password.R")
-create_smtp_creds_key_with_password(
-    id = "gmail",
-    provider = "gmail",
-    user = "simonrolph.ukceh@gmail.com",
-    password = Sys.getenv("gmail_password"),
-    overwrite = TRUE
-)
+#source("functions/create_smtp_creds_key_with_password.R")
+# #create and unlock system keyring using keywing password from environment variables
+# keyring_create("system",password = Sys.getenv("keyring_password"))
+# keyring_unlock("system",Sys.getenv("keyring_password"))
+# 
+# create_smtp_creds_key_with_password(
+#     id = "gmail",
+#     provider = "gmail",
+#     user = "simonrolph.ukceh@gmail.com",
+#     password = Sys.getenv("gmail_password"),
+#     overwrite = TRUE
+# )
+
+#method 2
+#adjusted version that takes password from environment variables for the live app
+#source("functions/create_smtp_creds_key_with_password.R")
+# create_smtp_creds_file_with_password(
+#     file = ".secrets/gmail",
+#     provider = "gmail",
+#     user = "simonrolph.ukceh@gmail.com",
+#     password = Sys.getenv("gmail_password")
+# )
+
+# method 3: best solution, create credentials from environment variables
+creds <- creds_envvar(user = "simonrolph.ukceh@gmail.com",
+                      pass_envvar = "gmail_password",
+                      provider = "gmail",
+                      use_ssl = F)
 
 
 # sheets reauth with specified token and email address (run each time when app is run)
@@ -184,7 +207,10 @@ server <- function(input, output) {
                       from = sender,
                       to = recipients,
                       subject = "DECIDE email verification code",
-                      credentials = creds_key("gmail")
+                      #credentials = creds_key("gmail")
+                      #credentials = creds_file(".secrets/gmail")
+                      credentials = creds,
+                      verbose = T
             )
             
         } 
@@ -332,7 +358,7 @@ server <- function(input, output) {
                   from = sender,
                   to = recipients,
                   subject = "DECIDE newsletter",
-                  credentials = creds_key("gmail")
+                  credentials = creds
         )
 
     })
@@ -390,7 +416,7 @@ server <- function(input, output) {
                       from = sender,
                       to = recipients,
                       subject = "Welcome to the DECIDE newsletter",
-                      credentials = creds_key("gmail")
+                      credentials = creds
             )
             
             print("New user successfully added, sent email.")

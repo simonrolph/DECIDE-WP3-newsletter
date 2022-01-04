@@ -1,3 +1,5 @@
+# THESE FUNCTIONS ARE NO LONGER USED
+
 create_smtp_creds_key_with_password <- function (id, user = NULL, provider = NULL, host = NULL, port = NULL, 
           use_ssl = NULL, overwrite = FALSE,password = NULL) 
 {
@@ -44,4 +46,18 @@ create_smtp_creds_key_with_password <- function (id, user = NULL, provider = NUL
           id, "\".\n", "* Use the `view_credential_keys()` function to see all available keys\n", 
           "* You can use this key within `smtp_send()` with ", 
           "`credentials = creds_key(\"", id, "\")`")
+}
+
+
+
+create_smtp_creds_file_with_password <- function (file, user = NULL, provider = NULL, host = NULL, port = NULL, use_ssl = NULL, password = NULL) 
+{
+  if (is.null(user)) 
+    user <- ""
+  credentials_list <- blastula:::create_credentials_list(provider = provider, 
+                                              user = user, host = host, port = port, use_ssl = use_ssl,password = password)
+  serialized <- blastula:::JSONify_credentials(credentials_list)
+  writeLines(serialized, file)
+  Sys.chmod(file, mode = "0600")
+  message("The SMTP credentials file (`", file, "`) has been generated")
 }
