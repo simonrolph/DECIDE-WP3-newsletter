@@ -52,6 +52,7 @@ ui <- fluidPage(
     ),
     
     # Application title
+    img(src = "Decide_artwork_RGB.png",style="max-width: 500px;"),
     titlePanel("DECIDE: Sign up to your personalised newsletter"),
     p("In order to send you personalised newsletters about your recording we need to know your email address, and your usernames on your biological recording websites. Please fill out the form below."),
 
