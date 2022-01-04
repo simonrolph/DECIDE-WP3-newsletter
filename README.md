@@ -17,12 +17,23 @@ To publish the app from Studio Desktop (can't publish from DataLabs) click on th
 
 You want to untick the `.Renviron` file because we don't want to 'publish' the secrets (although they are not actually accessible to the user it's best to use the Rstudio Connect environment variables (see section on iRecord/iSpot authentication). You can publish the `.secrets` folder which contains the google sheets authententication.
 
-
 ### Email authentication
 
-Email authentication is managed using the `blastula` package. A 'key' is generated using the `create_smtp_creds_key(id = "gmail", provider = "gmail", user = "eaxample@example.com)` function. You will need to allow less secure apps to use your google account https://support.google.com/accounts/answer/6010255?hl=en . I am currently using a dummy gmail account for testing purposes but may wish to change this to a different email account for the live product. Once `create_smtp_creds_key()` has created the key, you can then use this key like this `smtp_send(... credentials = creds_key("gmail")` where the argument to `creds_key` is the same as you set for the `id` argument you set for `create_smtp_creds_key`.
+Email authentication is managed using the `blastula` package. You will need to allow less secure apps to use your google account https://support.google.com/accounts/answer/6010255?hl=en. I am currently using a dummy gmail account for testing purposes but may wish to change this to a different email account for the live product.
 
-Unsure how this will transfer when deploying to the live server.
+The first approch I used for autheneication was to generate a 'key' using the `create_smtp_creds_key(id = "gmail", provider = "gmail", user = "eaxample@example.com)` function.  Once `create_smtp_creds_key()` has created the key, you can then use this key like this `smtp_send(... credentials = creds_key("gmail")` where the argument to `creds_key` is the same as you set for the `id` argument you set for `create_smtp_creds_key`.
+
+However when deploying to Rstudio Connect I had some issues with keychains. Therefore, the email password is stored in the environment variables as `gmail_password` (see next section on adding environment variables). A credentials object is created as the app is started using the `creds_envvar()` function.
+
+This currently doesn't send emails on the Rstudio Connect deployment with these errors:
+
+```
+2022/01/04 14:04:23.329063735 * TCP_NODELAY set
+2022/01/04 14:04:23.329092115 * Immediate connect fail for 2a00:1450:400c:c00::6d: Network is unreachable
+2022/01/04 14:04:24.108952234 * Connection timed out after 10001 milliseconds
+```
+
+However I think this is just because the Rstudio Connect set up is limited to VPN only so it can't connect to gmail.
 
 ### iRecord and iSpot authentication
 
@@ -50,7 +61,7 @@ gs4_auth()
 list.files(".secrets/")
 ```
 
-Following this guide: https://josiahparry.medium.com/googlesheets4-authentication-for-deployment-9e994b4c81d6 the `.secrets` folder is 'published' the live app (users can't access the folder).
+Following this guide: https://josiahparry.medium.com/googlesheets4-authentication-for-deployment-9e994b4c81d6 the `.secrets` folder is 'published' the live app (users can't access the folder). This is the least secure bit of the app at the moment.
 
 ## Collecting and storing user information
 
@@ -140,7 +151,7 @@ It's important that everything in the data visualisation is contained within one
 
 ### Sending the email
 
-The email is rendered using the `render()` function and saved to file with the reactive `newsletter_file_location()`. Is is then sent using the following command:
+In the app the user can send their preview to their email address which is done as follows... The email is rendered using the `render()` function and saved to file with the reactive `newsletter_file_location()`. Is is then sent using the following command:
 ```
 email_obj <- blastula:::cid_images(newsletter_file_location())
         
