@@ -10,7 +10,13 @@ This peice of work is part of work package 3 of the DECIDE project which focusse
 
 ### Publishing the shiny app
 
-The app will be published using Rstudio Connect https://connect-apps.ceh.ac.uk/connect
+The app is published using Rstudio Connect https://connect-apps.ceh.ac.uk/connect
+
+To publish the app from Studio Desktop (can't publish from DataLabs) click on the connect button which brings up this dialogue:
+![image](https://user-images.githubusercontent.com/17750766/148047593-70aa0837-4543-4ff2-af29-767bad0a89c9.png)
+
+You want to untick the `.Renviron` file because we don't want to 'publish' the secrets (although they are not actually accessible to the user it's best to use the Rstudio Connect environment variables (see section on iRecord/iSpot authentication). You can publish the `.secrets` folder which contains the google sheets authententication.
+
 
 ### Email authentication
 
@@ -23,6 +29,10 @@ Unsure how this will transfer when deploying to the live server.
 Both iRecord and iSpot need authentication for API requests.
 
 We are using the elasticsearch endpoint for getting data from iRecord. This requires a 'secret' which is stored in the `.Renviron` file. On the live deployment the password can be stored in environment variables: https://support.rstudio.com/hc/en-us/articles/360016606613-Environment-variables-on-RStudio-Connect
+
+Once the app is deployed on Rstudio Connect, go to the vars tab in the righthand sidebar and enter the `irecord_key` and `ispot_key` like so (here showing entering the iRecord key):
+
+![image](https://user-images.githubusercontent.com/17750766/148048651-29a304af-4c1d-40f3-a752-8616129e345d.png)
 
 For further information see: https://github.com/BiologicalRecordsCentre/interacting-with-R and https://indicia-docs.readthedocs.io/en/latest/developing/rest-web-services/elasticsearch.html
 
@@ -40,7 +50,7 @@ gs4_auth()
 list.files(".secrets/")
 ```
 
-Unsure how this will transfer when deploying to the live server.
+Following this guide: https://josiahparry.medium.com/googlesheets4-authentication-for-deployment-9e994b4c81d6 the `.secrets` folder is 'published' the live app (users can't access the folder).
 
 ## Collecting and storing user information
 
