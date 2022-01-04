@@ -69,7 +69,7 @@ if(F){
 creds <- creds_envvar(user = "simonrolph.ukceh@gmail.com",
                       pass_envvar = "gmail_password",
                       provider = "gmail",
-                      use_ssl = F)
+                      use_ssl = T)
 
 
 # sheets reauth with specified token and email address (run each time when app is run)

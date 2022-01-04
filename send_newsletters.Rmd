@@ -1,0 +1,129 @@
+---
+title: Send emails
+output: html_document
+---
+
+
+This file is one way of sending emails out in bulk, it gets the list of users from google sheets, generates email content for all users. THen it goes through all the users again and sends the emails.
+
+set up, packages etc
+
+```{r}
+
+library(googlesheets4)
+library(blastula)
+
+
+creds <- creds_envvar(user = "simonrolph.ukceh@gmail.com",
+                      pass_envvar = "gmail_password",
+                      provider = "gmail",
+                      use_ssl = T)
+
+```
+
+Load users
+
+```{r}
+
+#authenticate google sheets
+gs4_auth(
+    cache = ".secrets",
+    email = "simonrolph.ukceh@gmail.com"
+)
+
+#load the users
+#read as all character with the col_types argument (especially the irecord warehouse ID which it likes to convert to a scientific notation number)
+user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",col_types = c("c"))
+
+user_db$newsletter_file_location <- ""
+
+
+```
+
+
+For each user:
+ * create newsletter
+ * randomise items
+ * save outputs
+
+
+```{r}
+n_users <- nrow(user_db)
+
+#to be looped
+i <- 1
+
+#get all the markdown parameters into a list
+markdown_params <- 
+  list(
+      name = user_db$name[i],
+      email = user_db$email[i],
+      irecord_username = user_db$irecord_username[i],
+      ispot_username = user_db$ispot_username[i],
+      inat_username = user_db$inat_username[i],
+      irecord_key      = gsub("Â","",Sys.getenv("irecord_key")),
+      ispot_key        = Sys.getenv("ispot_key")
+  )
+
+#if any usernames are not there then set them to NA
+if (length(markdown_params$irecord_username)==0){markdown_params$irecord_username <- NA}
+if (length(markdown_params$ispot_username)==0){markdown_params$ispot_username <- NA}
+if (length(markdown_params$inat_username)==0){markdown_params$inat_username <- NA}
+
+
+print("Generating newsletter preview")
+
+#create a folder for the day's newsletters
+if(!dir.exists(paste0("newsletters/",Sys.Date()))){
+  dir.create(paste0("newsletters/",Sys.Date()))
+}
+
+out_file_name <- paste0("../newsletters/",Sys.Date(),"/",markdown_params$name,".html")
+
+user_db$newsletter_file_location[i] <- render("newsletter_templates/v0_0_1.Rmd",
+              output_file = out_file_name,
+              params = markdown_params
+)
+
+
+
+
+
+
+```
+
+for each user:
+Send emails
+
+```{r}
+
+#to be looped
+i <- 1
+
+#send email
+sender <- "simonrolph.ukceh@gmail.com"
+recipients <- user_db$email[i]
+
+#spam tester
+recipients <- "test-cev35hwi3@srv1.mail-tester.com"
+
+email_obj <- blastula:::cid_images(user_db$newsletter_file_location[i])
+
+smtp_send(email_obj,
+          from = sender,
+          to = "simon.p.rolph@gmail.com",
+          subject = "DECIDE newsletter",
+          #credentials = creds,
+          credentials = creds_key("gmail"),
+          verbose = T
+)
+
+```
+
+
+
+
+
+
+
+
