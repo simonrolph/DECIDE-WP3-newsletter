@@ -1,12 +1,14 @@
 ---
-title: Send emails
+title: Sending DECIDE Monthly Newsletters
 output: html_document
 ---
 
 
-This file is one way of sending emails out in bulk, it gets the list of users from google sheets, generates email content for all users. THen it goes through all the users again and sends the emails.
+This R script is a simple way of sending emails out in bulk, it gets the list of users from google sheets, generates email content for all users (step 1). Then it goes through all the users again and sends the emails (step 2).
 
-set up, packages etc
+This is set up as a markdown document so that it could in theory be run on a schedule on Rstudio: https://docs.rstudio.com/connect/user/scheduling/ connect.
+
+Initial set up, packages, credentials for email / google sheets:
 
 ```{r}
 
@@ -14,17 +16,10 @@ library(googlesheets4)
 library(blastula)
 library(rmarkdown)
 
-
 creds <- creds_envvar(user = "simonrolph.ukceh@gmail.com",
                       pass_envvar = "gmail_password",
                       provider = "gmail",
                       use_ssl = T)
-
-```
-
-Load users
-
-```{r}
 
 #authenticate google sheets
 gs4_auth(
@@ -32,16 +27,20 @@ gs4_auth(
     email = "simonrolph.ukceh@gmail.com"
 )
 
+```
+
+Load the users from googlesheets:
+
+```{r}
 #load the users
 #read as all character with the col_types argument (especially the irecord warehouse ID which it likes to convert to a scientific notation number)
 user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",col_types = c("c"))
 
 #create a new column which will be used to store the file location of outputted email
 user_db$newsletter_file_location <- ""
-
-
 ```
 
+Step 1: generate the newsletters
 
 For each user:
  * create newsletter
@@ -53,41 +52,42 @@ For each user:
 n_users <- nrow(user_db)
 
 #to be looped
-i <- 1
+#i <- 1
 
-#get all the markdown parameters into a list
-markdown_params <- 
-  list(
-      name = user_db$name[i],
-      email = user_db$email[i],
-      irecord_username = user_db$irecord_username[i],
-      ispot_username = user_db$ispot_username[i],
-      inat_username = user_db$inat_username[i],
-      irecord_key      = gsub("Â","",Sys.getenv("irecord_key")),
-      ispot_key        = Sys.getenv("ispot_key")
+for (i in 1:n_users){
+  #get all the markdown parameters into a list
+  markdown_params <- 
+    list(
+        name = user_db$name[i],
+        email = user_db$email[i],
+        irecord_username = user_db$irecord_username[i],
+        ispot_username = user_db$ispot_username[i],
+        inat_username = user_db$inat_username[i],
+        irecord_key      = gsub("Â","",Sys.getenv("irecord_key")),
+        ispot_key        = Sys.getenv("ispot_key")
+    )
+  
+  #if any usernames are not there then set them to NA
+  if (length(markdown_params$irecord_username)==0){markdown_params$irecord_username <- NA}
+  if (length(markdown_params$ispot_username)==0){markdown_params$ispot_username <- NA}
+  if (length(markdown_params$inat_username)==0){markdown_params$inat_username <- NA}
+  
+  
+  print("Generating newsletter")
+  
+  #create a folder for the day's newsletters
+  if(!dir.exists(paste0("newsletters/",Sys.Date()))){
+    dir.create(paste0("newsletters/",Sys.Date()))
+  }
+  
+  #render the newsletter
+  out_file_name <- paste0("../newsletters/",Sys.Date(),"/",markdown_params$name,".html")
+  
+  user_db$newsletter_file_location[i] <- render("newsletter_templates/v0_0_1.Rmd",
+                output_file = out_file_name,
+                params = markdown_params
   )
-
-#if any usernames are not there then set them to NA
-if (length(markdown_params$irecord_username)==0){markdown_params$irecord_username <- NA}
-if (length(markdown_params$ispot_username)==0){markdown_params$ispot_username <- NA}
-if (length(markdown_params$inat_username)==0){markdown_params$inat_username <- NA}
-
-
-print("Generating newsletter")
-
-#create a folder for the day's newsletters
-if(!dir.exists(paste0("newsletters/",Sys.Date()))){
-  dir.create(paste0("newsletters/",Sys.Date()))
 }
-
-#render the newsletter
-out_file_name <- paste0("../newsletters/",Sys.Date(),"/",markdown_params$name,".html")
-
-user_db$newsletter_file_location[i] <- render("newsletter_templates/v0_0_1.Rmd",
-              output_file = out_file_name,
-              params = markdown_params
-)
-
 
 
 
@@ -95,30 +95,32 @@ user_db$newsletter_file_location[i] <- render("newsletter_templates/v0_0_1.Rmd",
 
 ```
 
+Step 2: send the pre-generated templates out to everyone.
+
 for each user:
 Send emails
 
 ```{r}
+#i <- 1
 
-#to be looped
-i <- 1
+for (i in 1:n_users){
+  #define sender and recipient (could change this for testing, eg. set the recipient to your email to generate a batch of emails for different users but then see what they look like in your own inbox without spamming real users.)
+  sender <- "simonrolph.ukceh@gmail.com" # obviously we want to change then in real use
+  recipients <- user_db$email[i]
+  
+  # turn the rendered markdown into a blastula ready email object
+  email_obj <- blastula:::cid_images(user_db$newsletter_file_location[i])
+  
+  #send email
+  smtp_send(email_obj,
+            from = sender,
+            to = recipients,
+            subject = "Your DECIDE Newsletter",
+            credentials = creds,
+            verbose = T
+  )
 
-#send email
-sender <- "simonrolph.ukceh@gmail.com"
-recipients <- user_db$email[i]
-
-#spam tester
-recipients <- "test-cev35hwi3@srv1.mail-tester.com"
-
-email_obj <- blastula:::cid_images(user_db$newsletter_file_location[i])
-
-smtp_send(email_obj,
-          from = sender,
-          to = "simon.p.rolph@gmail.com",
-          subject = "DECIDE newsletter",
-          credentials = creds,
-          verbose = T
-)
+}
 
 ```
 

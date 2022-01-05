@@ -237,7 +237,7 @@ server <- function(input, output) {
             )
             
             #download the user database
-            user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes")
+            user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",col_types = c("c"))
             user_db <- as.data.frame(user_db)
             
             # check if the user is already in the database, if they are then show the information we have on them.

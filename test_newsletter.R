@@ -30,4 +30,4 @@ render(
   params = markdown_params
 )
 
-#then navigate to the file in the files pane and open in view or web browser
+#then navigate to the file in the rstudio files pane and open in web browser
