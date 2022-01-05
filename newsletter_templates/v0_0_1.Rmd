@@ -219,16 +219,16 @@ ds_timeline <- function(){
 available_data_stories <- lsf.str() %>% as.vector()
 available_data_stories <- available_data_stories[available_data_stories %>% startsWith("ds_")]
 
-params$data_stories <- strsplit(params$data_stories,",")
+data_stories_requested <- params$data_stories %>% strsplit(",") %>% unlist() %>% trimws()
 
 # workout whether to run some or all of the data stories  
 # if the markdown has been selected to render with all data stories th
-if(params$data_stories == "all"){
+if("all" %in% data_stories_requested){
     data_stories <- available_data_stories
   } else {
     #otherwise, first check to see if all the functions specified in the params$data_stories have actually got corresponding functions loaded into the environment
-  if (!(FALSE %in% (data_stories %in% params$data_stories))){
-    data_stories <- params$data_stories
+  if (!(FALSE %in% (available_data_stories %in% data_stories_requested))){
+    data_stories <- data_stories_requested
   } else {
     # if there aren't available functions then display a error message to stop the render
     stop(paste("You have specified a data story in the markdown parameters but there is no corresponding function. You specified these data stories:\n ",params$data_stories, "\nbut these are the functions available:\n ",paste(data_stories,collapse = "\n  ")))

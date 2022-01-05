@@ -116,8 +116,7 @@ smtp_send(email_obj,
           from = sender,
           to = "simon.p.rolph@gmail.com",
           subject = "DECIDE newsletter",
-          #credentials = creds,
-          credentials = creds_key("gmail"),
+          credentials = creds,
           verbose = T
 )
 
