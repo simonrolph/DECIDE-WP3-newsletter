@@ -6,13 +6,22 @@ Readme last updated 2021/12/23
 
 This peice of work is part of work package 3 of the DECIDE project which focusses on digital engagements for recorders. The aim is to provide some sort of email newsletter that reviews what records they have collected, contextualise them within the DECIDE way of thinking and then encourage them to go and record in places which are of a higher recording priority. We are also looking to assess the effectiveness of these engagements by using tracked links to see which parts of the email newsletter prompts them to go to the DECIDE tool. These emails will be sent monthly across the recording season of 2022.
 
-## Set up
+There are three key modules that make this work.
+
+ 1. The shiny app (`app.R`) which provides a way for users to sign up to the mailing list whilst validating their recording usernames, and see a preview of the email newsletter content.
+ 2. The newsletter templates (in `/newsletter_templates/`) which are parametetised R markdown documents that generate the newsletter content by downloading records and .
+ 3. A R markdown document (`send_newsletters.Rmd`) loads all the users from the Google sheets, generates all their newsletters and then sends them all out.
+
+There is also `test_newsletter.R` which is a script for quickly testing a newsletter templates
+
+## Configuration and set up
 
 ### Publishing the shiny app
 
 The app is published using Rstudio Connect https://connect-apps.ceh.ac.uk/connect
 
 To publish the app from Studio Desktop (can't publish from DataLabs) click on the connect button which brings up this dialogue:
+
 ![image](https://user-images.githubusercontent.com/17750766/148047593-70aa0837-4543-4ff2-af29-767bad0a89c9.png)
 
 You want to untick the `.Renviron` file because we don't want to 'publish' the secrets (although they are not actually accessible to the user it's best to use the Rstudio Connect environment variables (see section on iRecord/iSpot authentication). You can publish the `.secrets` folder which contains the google sheets authententication.
@@ -33,7 +42,7 @@ This currently doesn't send emails on the Rstudio Connect deployment with these 
 2022/01/04 14:04:24.108952234 * Connection timed out after 10001 milliseconds
 ```
 
-However I think this is just because the Rstudio Connect set up is limited to VPN only so it can't connect to gmail.
+However I think this is just because the Rstudio Connect set up is limited to VPN only so it can't connect to Gmail.
 
 ### iRecord and iSpot authentication
 
@@ -47,9 +56,11 @@ Once the app is deployed on Rstudio Connect, go to the vars tab in the righthand
 
 For further information see: https://github.com/BiologicalRecordsCentre/interacting-with-R and https://indicia-docs.readthedocs.io/en/latest/developing/rest-web-services/elasticsearch.html
 
-### Google sheets authentication
+### Storing and accessing user data with Google sheets (requiring authentication)
 
-Authentication for google sheets is sorted using `gargle` R package: https://gargle.r-lib.org/ 
+Data is stored in a Google Sheets spreadsheet using https://github.com/tidyverse/googlesheets4. That means we can view the data separately and easily make edits if needed. It is a simple spreadsheet with columns for each user variable (name, email and usernames for each platform).
+
+Authentication for google sheets is implented using `gargle` R package: https://gargle.r-lib.org/ 
 
 The following code creates a secret which can then be loaded from file. the `.secrets` folder is git ignored.
 ```
@@ -63,9 +74,10 @@ list.files(".secrets/")
 
 Following this guide: https://josiahparry.medium.com/googlesheets4-authentication-for-deployment-9e994b4c81d6 the `.secrets` folder is 'published' the live app (users can't access the folder). This is the least secure bit of the app at the moment.
 
-## Collecting and storing user information
+## How the shiny app works
 
-We have created a web app as a way for users to enter their email adress and usernames on three recording platforms (iRecord, iSpot, iNaturalist). This app is defined in `app.R`. This is currently how the user interface looks (before emails and/or usernames have been validated:
+We have created a web app as a way for users to enter their email adress and usernames on three recording platforms (iRecord, iSpot, iNaturalist). This app is defined in `app.R`. The interface looks something like this (before emails and/or usernames have been validated):
+
 ![image](https://user-images.githubusercontent.com/17750766/147248329-128d0222-1b3c-4631-8b72-4177b6c616ae.png)
 
 ### Validating email
@@ -80,11 +92,7 @@ Each of the functions defined in `functions/check_usernames.R` return a `TRUE` i
 
 ### Previewing and signing up to the newsletter
 
-Email content can be generated in the shiny app by clicking on the 'Preview your newsletter' button. This should only be able to be clicked if the email and usernames have been validated. See the following section for further details.
-
-The user can choose to send the previewed newsletter to their email address. 
-
-The user can sign up to the mailing list which adds their details to the google sheet (or edits their details if they are already signed up).
+Email content can be generated in the shiny app by clicking on the 'Preview your newsletter' button. This should only be able to be clicked if the email and usernames have been validated. See the following section for further details. The user can choose to send the previewed newsletter to their email address. The user can sign up to the mailing list which adds their details to the google sheet (or edits their details if they are already signed up - not implemented yet).
 
 ## Generating email content
 
@@ -103,9 +111,18 @@ params:
   ispot_username: NULL
   inat_username: NULL
   ispot_key: NA
-  irecord_key: NA  
+  irecord_key: NA
+  data_stories: "all"
+  randomise: FALSE
 ---
 ```
+
+More info about each parameter:
+ * `irecord_username` is each user's unique indicia warehouse ID (not actually their username)
+ * `ispot_username` and `inat_username` are just their username
+ * `ispot_key` and `irecord_key` are the keys for accessing the corresponding APIs
+ * `data_stories` defines which data stories / prompts to include. The default is `'all'` or alternatively specify the names of functions in the newsletter templates, comma separated, such as `'"ds_table_of_records,ds_most_valuable_record,ds_timeline"'`. It will error if you specify data stories that are not present in the template.
+ * `randomise` is a TRUE/FALSE as to whether to randomise the data stories
 
 The markdown document is rendered as a blastula_email format which correctly formats markdown for use in an email message. See: https://www.infoworld.com/article/3611858/how-to-send-emails-with-graphics-from-r.html
 
@@ -122,9 +139,11 @@ The markdown document, broadly does the following:
    * `confirmed` - a TRUE or FALSE as to whether the record has been verified in any way (obviously different for each platform)
    * `website` - which website the record came from (values are: `"iRecord"` / `"iSpot"` / `"iNaturalist"`)
  * Gets the DECIDE score for each record from the DECIDE app endpoint
- * Produces a series visualisations / datastories / prompts (need a term to describe each of these discrete units)
+ * Produces a series of datastories / prompts
 
 There are useful functions (mostly for getting data from APIs) in the `functions/` folder.
+
+### Defining 'data stories'
 
 Each visualisation is framed in the rmarkdown like so:
 
@@ -166,7 +185,7 @@ The `cid_images` function does something with images to make them suitable for s
  
 ## Storing data
 
-Data is stored in a Google Sheets spreadsheet using https://github.com/tidyverse/googlesheets4. That means we can view the data separately and easily make edits if needed. It is a simple spreadsheet with columns for each user variable (name, email and usernames for each platform)
+
 
 ## Sending emails
 
