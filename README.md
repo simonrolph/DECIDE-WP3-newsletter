@@ -191,6 +191,8 @@ Every data story has to be self contained in these argument-less functions, each
 
 ### Developing and testing data stories
 
+For testing out new data stories I suggest just making a copy of the latest template (in `\newsletter_templates\`) and then use `test_newsletter.R` function to test your newsletter template.
+
 ### Sending the newsletter preview from the shiny app to user's email
 
 In the app the user can send their preview to their email address which is done as follows... The email is rendered using the `render()` function and saved to file with the reactive `newsletter_file_location()`. Is is then sent using the following command:
