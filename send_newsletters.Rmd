@@ -12,6 +12,7 @@ set up, packages etc
 
 library(googlesheets4)
 library(blastula)
+library(rmarkdown)
 
 
 creds <- creds_envvar(user = "simonrolph.ukceh@gmail.com",
@@ -35,6 +36,7 @@ gs4_auth(
 #read as all character with the col_types argument (especially the irecord warehouse ID which it likes to convert to a scientific notation number)
 user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",col_types = c("c"))
 
+#create a new column which will be used to store the file location of outputted email
 user_db$newsletter_file_location <- ""
 
 
@@ -71,13 +73,14 @@ if (length(markdown_params$ispot_username)==0){markdown_params$ispot_username <-
 if (length(markdown_params$inat_username)==0){markdown_params$inat_username <- NA}
 
 
-print("Generating newsletter preview")
+print("Generating newsletter")
 
 #create a folder for the day's newsletters
 if(!dir.exists(paste0("newsletters/",Sys.Date()))){
   dir.create(paste0("newsletters/",Sys.Date()))
 }
 
+#render the newsletter
 out_file_name <- paste0("../newsletters/",Sys.Date(),"/",markdown_params$name,".html")
 
 user_db$newsletter_file_location[i] <- render("newsletter_templates/v0_0_1.Rmd",

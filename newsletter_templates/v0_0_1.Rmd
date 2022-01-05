@@ -9,16 +9,25 @@ params:
   inat_username: NA
   ispot_key: NA
   irecord_key: NA
+  data_stories: "all"
+  randomise: FALSE
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
 source("../functions/get_records.R")
+source("../functions/get_data.R")
 source("../functions/get_decide_score.R")
+source("../functions/encode_graphic.R")
 library(ggplot2)
 library(dplyr)
 library(htmltools)
+library(curl)
+library(jsonlite)
+library(httr)
+library(knitr)
+library(RCurl)
 
 ```
 
@@ -85,11 +94,10 @@ if (!is.na(params$inat_username)){
 
 ```
 
-```{r data cleaning, echo = F}
+```{r data cleaning, echo = FALSE,warning=FALSE,error=FALSE}
 
 if(nrow(all_records)== 0){
-  print("Error: no records")
-  knit_exit()
+  stop("Error: couldn't get any records for the provided usernames")
 }
 
 all_records$observed_on <- all_records$observed_on %>% as.Date()
@@ -120,72 +128,127 @@ all_records$decide_score <- unlist(all_records$decide_score)
 
 ```
 
-
-
 ```{r highlight dataframes, echo = F}
 #some highlights that are used in the visualisation:
 best_record <- all_records %>% arrange(desc(decide_score)) %>% head(n=1)
 most_recent_record <- all_records %>% arrange(desc(observed_on)) %>% head(n=1)
 ```
 
-<div>
-```{r table of records, echo = F}
-h3("Your recent records")
-#render a table
-kable(all_records[,c("scientific_name","latitude","longitude","observed_on","name","website","decide_score")])
-```
-</div>
+```{r data stories, echo=FALSE,warning = F}
+#this is where we define functions that use variables from the global environment (don't have any arguments) that output one HTML div which contains all the content
+#functions are prefixed with `ds_` (data stories)
 
-<div id="most-valuable-record" class="data-story">
-```{r most valuable record, echo=FALSE,warning = F}
-  
-h3("Your most valuable record")
-
-img(src = best_record$image_url)
-
-p("Your most valuable record is a record of ",
-  em(best_record$scientific_name),
-  " observed on ",
-  best_record$observed_on,
-  " with a DECIDE recording priority value of ",
-  best_record$decide_score,
-  ". Wow! Why not make more records in this area?",
-  a("Visit the DECIDE recorder tool",
-    href="https://decide.ceh.ac.uk/opts/scoremap/map",
-    target="_blank"))
-
-```
-</div>
-
-<div id="recording_timeline" class="data-story">
-```{r recording timeline, echo=FALSE,warning = F}
-
-h3("Your recording timeline")
-
-p("Have been recording more strategically recently? Let\'s have a look!")
-
-all_records %>% ggplot(aes(x = observed_on,y = decide_score,label = scientific_name))+
-  geom_point()+
-  scale_x_date()+
-  theme_bw()+
-  labs(x = "Date of record",y = "DECIDE recording priority")
-
-if (most_recent_record$decide_score > mean(all_records$decide_score,na.rm = T)){
-  recent_verses_average <- "was above your average recording priority. Nice one!"
-} else {
-  recent_verses_average <- "was below your average recording priority."
+#table of records
+ds_table_of_records <- function(){
+  div(
+    id = "table of records",
+    class = "data-story",
+    
+    h3("Your recent records"),
+    HTML(kable(all_records[,c("scientific_name","latitude","longitude","observed_on","name","website","decide_score")],"html"))
+  )
 }
 
-p("You most recent record of",
-  most_recent_record$scientific_name,
-  recent_verses_average,
-  a("Visit the DECIDE recorder tool",
-    href="https://decide.ceh.ac.uk/opts/scoremap/map",
-    target="_blank")
+
+#your most valuable record:
+ds_most_valuable_record <- function(){
+  
+  div(
+    id = "most-valuable-record",
+    class="data-story",
+    
+    h3("Your most valuable record"),
+    img(src = best_record$image_url),
+    p("Your most valuable record is a record of ",
+      em(best_record$scientific_name),
+      " observed on ",
+      best_record$observed_on,
+      " with a DECIDE recording priority value of ",
+      best_record$decide_score,
+      ". Wow! Why not make more records in this area?",
+      a("Visit the DECIDE recorder tool",
+        href="https://decide.ceh.ac.uk/opts/scoremap/map",
+        target="_blank"))
   )
+}
+
+
+#recording timeline
+ds_timeline <- function(){
+  #generate some language (not very naturally)
+  if (most_recent_record$decide_score > mean(all_records$decide_score,na.rm = T)){
+    recent_verses_average <- "was above your average recording priority. Nice one!"
+  } else {
+    recent_verses_average <- "was below your average recording priority."
+  }
+  
+  #produce the graphic for the 
+  g <- all_records %>% ggplot(aes(x = observed_on,y = decide_score,label = scientific_name))+
+    geom_point()+
+    scale_x_date()+
+    theme_bw()+
+    labs(x = "Date of record",y = "DECIDE recording priority")
+  
+  #encoded graphic
+  enc_g <- encode_graphic(g)
+    
+  
+  #build element
+  div(
+    id = "recording_timeline",
+    class = "data-story",
+    
+    h3("Your recording timeline"),
+    p("Have been recording more strategically recently? Let\'s have a look!"),
+    HTML(enc_g),
+    p("You most recent record of",
+      most_recent_record$scientific_name,
+      recent_verses_average,
+      a("Visit the DECIDE recorder tool",
+        href="https://decide.ceh.ac.uk/opts/scoremap/map",
+        target="_blank")
+    )
+  )
+}
 
 ```
-</div>
+
+```{r produce data stories, results='asis',echo=FALSE,warning=FALSE}
+
+# get the available functions (with the ds_ prefix)
+available_data_stories <- lsf.str() %>% as.vector()
+available_data_stories <- available_data_stories[available_data_stories %>% startsWith("ds_")]
+
+params$data_stories <- strsplit(params$data_stories,",")
+
+# workout whether to run some or all of the data stories  
+# if the markdown has been selected to render with all data stories th
+if(params$data_stories == "all"){
+    data_stories <- available_data_stories
+  } else {
+    #otherwise, first check to see if all the functions specified in the params$data_stories have actually got corresponding functions loaded into the environment
+  if (!(FALSE %in% (data_stories %in% params$data_stories))){
+    data_stories <- params$data_stories
+  } else {
+    # if there aren't available functions then display a error message to stop the render
+    stop(paste("You have specified a data story in the markdown parameters but there is no corresponding function. You specified these data stories:\n ",params$data_stories, "\nbut these are the functions available:\n ",paste(data_stories,collapse = "\n  ")))
+  }
+}
+
+#the data stories will be generated in the order specified in the markdown parameters if randomise if set to FALSE (default). if it is set to TRUE then randomise the data stories using `sample()`
+
+#note that if params$data_stoies = "all" then the data stories will be rendered in alphabetical order of the function names
+if(params$randomise){
+  data_stories <- sample(data_stories)
+}
+
+#go through the data stories and run the function for each using `do.call`
+for (story in data_stories){
+  rendered_story <- do.call(story,args = list())
+  print(rendered_story)
+}
+
+```
 
 <hr>
 
