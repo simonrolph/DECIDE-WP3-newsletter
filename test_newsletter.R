@@ -15,7 +15,9 @@ markdown_params <-
     irecord_key      = gsub("Â","",Sys.getenv("irecord_key")),
     ispot_key        = Sys.getenv("ispot_key"),
     data_stories    = "ds_table_of_records,ds_most_valuable_record,ds_timeline",
-    randomise   = TRUE
+    randomise   = TRUE,
+    start_date   = "2019-07-01",
+    end_date = "2021-01-01"
   )
 
 

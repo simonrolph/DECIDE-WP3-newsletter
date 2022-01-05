@@ -11,6 +11,8 @@ params:
   irecord_key: NA
   data_stories: "all"
   randomise: FALSE
+  start_date: NA
+  end_date: NA
 ---
 
 ```{r setup, include=FALSE}
@@ -28,6 +30,22 @@ library(jsonlite)
 library(httr)
 library(knitr)
 library(RCurl)
+
+```
+
+```{r, echo = F, warning = F}
+#check date formatting
+if (!is.na(params$start_date)){
+  start_date <- as.Date(params$start_date,"%Y-%m-%d")
+  if(is.na(start_date)){stop("Incorrect start date format")}
+  if(start_date<as.Date("1950-01-01")){stop("Incorrect start date format")}
+}
+
+if (!is.na(params$end_date)){
+  end_date <- as.Date(params$end_date,"%Y-%m-%d")
+  if(is.na(end_date)){stop("Incorrect end date format")}
+  if(end_date<as.Date("1950-01-01")){stop("Incorrect end date format")}
+}
 
 ```
 
@@ -102,6 +120,18 @@ if(nrow(all_records)== 0){
 
 all_records$observed_on <- all_records$observed_on %>% as.Date()
 
+
+# filter dates based on report parameters
+if (!is.na(params$start_date)){
+  all_records <- all_records %>% filter(observed_on >= start_date)
+}
+
+if (!is.na(params$end_date)){
+  all_records <- all_records %>% filter(observed_on <= end_date)
+}
+
+
+
 #remove ones with NA date
 all_records <- all_records %>% filter(!is.na(observed_on))
 
@@ -133,6 +163,9 @@ all_records$decide_score <- unlist(all_records$decide_score)
 best_record <- all_records %>% arrange(desc(decide_score)) %>% head(n=1)
 most_recent_record <- all_records %>% arrange(desc(observed_on)) %>% head(n=1)
 ```
+
+
+
 
 ```{r data stories, echo=FALSE,warning = F}
 #this is where we define functions that use variables from the global environment (don't have any arguments) that output one HTML div which contains all the content
@@ -212,6 +245,10 @@ ds_timeline <- function(){
 }
 
 ```
+
+
+
+
 
 ```{r produce data stories, results='asis',echo=FALSE,warning=FALSE}
 
