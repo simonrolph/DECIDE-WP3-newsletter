@@ -145,30 +145,53 @@ There are useful functions (mostly for getting data from APIs) in the `functions
 
 ### Defining 'data stories'
 
-Each visualisation is framed in the rmarkdown like so:
+Each data story is defined in a specific way so that it can be added to the newsletter based on the Rmarkdown document's parameters provided.
 
+Data stories are defined as argument-less functions like so (this one renders a table of records):
 ```
-<div id="another data visualisation" class="data-story">
-```{r another data visualisation, echo=FALSE,warning = F}
-
-h3("another data visualisation")
-
-data visulalisation code goes here (ggplots, maps,
-
-#how to add images
-img(src = all_records$image_url[1])
-
-a("Visit the DECIDE recorder tool",
-    href="https://decide.ceh.ac.uk/opts/scoremap/map",
-    target="_blank")
-
-\```
-</div>
+#table of records
+ds_table_of_records <- function(){
+  div(
+    id = "table of records",
+    class = "data-story",
+    
+    h3("Your recent records"),
+    HTML(kable(all_records[,c("scientific_name","latitude","longitude","observed_on","name","website","decide_score")],"html"))
+  )
+}
 ```
 
-It's important that everything in the data visualisation is contained within one code chunk, that means we can control whether this chunk is rendered through something like this `eval = params$should_this_chunk_be_evaluated`. The chunk also needs to be in the `<div>` written just before and after the code chunk with the class `"data-story"` and an id. This is required for post email generation 'shuffling' to reorganise the prompts.
+The function returns a HTML object via the `div()` function, each unamed argument in the `div` function is a child of the div. Named arguments are used to define the id and class of the div. USe the `h3()` function to define the data story title.
 
-### Sending the email
+If you want a plot in the data story you can do it like this by definging the plot as object `g` and the using the custom function `encode_graphic(g)` to encode it in base 64, the include it in the div using the `HTML` function like so: 
+
+```
+ds_timeline <- function(){
+ g <- all_records %>% ggplot(aes(x = observed_on,y = decide_score,label = scientific_name))+
+    geom_point()+
+    scale_x_date()+
+    theme_bw()+
+    labs(x = "Date of record",y = "DECIDE recording priority")
+  
+  #encoded graphic
+  enc_g <- encode_graphic(g)
+  
+  div(
+    id = "recording_timeline",
+    class = "data-story",
+    
+    h3("Your recording timeline"),
+    p("Have been recording more strategically recently? Let\'s have a look!"),
+    HTML(enc_g)
+   )
+}
+```
+
+Every data story has to be self contained in these argument-less functions, each function needs to start with `ds_`.
+
+### Developing and testing data stories
+
+### Sending the newsletter preview from the shiny app to user's email
 
 In the app the user can send their preview to their email address which is done as follows... The email is rendered using the `render()` function and saved to file with the reactive `newsletter_file_location()`. Is is then sent using the following command:
 ```
@@ -183,15 +206,10 @@ smtp_send(email_obj,
 
 The `cid_images` function does something with images to make them suitable for sending via email (I believe).
  
-## Storing data
+## Sending the monthly email Newsletter 
 
+Currently triggering the email send out process is manual and can be done by running the R markdown document (`send_newsletters.Rmd`). This document loads all the users from the Google sheets, generates all their newsletters and then sends them all out.
 
-
-## Sending emails
-
-I'm not sure if there's a good way to send emails in bulk on a schudule from a Shiny app (not that I have found anyway). Various options here:
-
- * Make an admin interface on the app which you can log into and send emails manually
- * run the send email process manually not on the R shiny app
+This is set up as a markdown document so that it could in theory be run on a schedule on Rstudio: https://docs.rstudio.com/connect/user/scheduling/ connect.
 
 
