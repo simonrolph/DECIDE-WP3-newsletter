@@ -114,6 +114,8 @@ params:
   irecord_key: NA
   data_stories: "all"
   randomise: FALSE
+  start_date: NA
+  end_date: NA
 ---
 ```
 
@@ -123,6 +125,7 @@ More info about each parameter:
  * `ispot_key` and `irecord_key` are the keys for accessing the corresponding APIs
  * `data_stories` defines which data stories / prompts to include. The default is `'all'` or alternatively specify the names of functions in the newsletter templates, comma separated, such as `'"ds_table_of_records,ds_most_valuable_record,ds_timeline"'`. It will error if you specify data stories that are not present in the template.
  * `randomise` is a TRUE/FALSE as to whether to randomise the data stories
+ * `start_date` and `end_date` if you want to filter records for perticular dates (inclusive). In format `YYYY-MM-DD` and will error if not properly formatted.
 
 The markdown document is rendered as a blastula_email format which correctly formats markdown for use in an email message. See: https://www.infoworld.com/article/3611858/how-to-send-emails-with-graphics-from-r.html
 
