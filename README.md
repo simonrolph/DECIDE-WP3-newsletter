@@ -1,7 +1,5 @@
 # DECIDE WP3 newsletter
 
-Readme last updated 2021/12/23
-
 ## Overview
 
 This peice of work is part of work package 3 of the DECIDE project which focusses on digital engagements for recorders. The aim is to provide some sort of email newsletter that reviews what records they have collected, contextualise them within the DECIDE way of thinking and then encourage them to go and record in places which are of a higher recording priority. We are also looking to assess the effectiveness of these engagements by using tracked links to see which parts of the email newsletter prompts them to go to the DECIDE tool. These emails will be sent monthly across the recording season of 2022.
@@ -11,6 +9,9 @@ There are three key modules that make this work.
  1. The shiny app (`app.R`) which provides a way for users to sign up to the mailing list whilst validating their recording usernames, and see a preview of the email newsletter content.
  2. The newsletter templates (in `/newsletter_templates/`) which are parametetised R markdown documents that generate the newsletter content by downloading records and .
  3. A R markdown document (`send_newsletters.Rmd`) loads all the users from the Google sheets, generates all their newsletters and then sends them all out.
+
+All works together something like this:
+![image](https://user-images.githubusercontent.com/17750766/148249218-df887d2e-0910-4f05-8bc3-d1ce6a5e86a1.png)
 
 There is also `test_newsletter.R` which is a script for quickly testing a newsletter templates
 
