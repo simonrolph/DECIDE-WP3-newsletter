@@ -4,6 +4,7 @@
 if(F){
   library(httr)
   library(jsonlite)
+  library(curl)
   username <- "simonrolph"
 }
 
@@ -43,6 +44,45 @@ check_irecord_username <- function(username,secret){
   }
   
   username_result
+}
+
+#get warehouse ID from username
+get_warehouse_id_from_username <- function(username,secret){
+  #create authentication header
+  client_id <- 'BRCINT'
+  auth_header <- paste('USER', client_id, 'SECRET', secret, sep = ':')
+  
+  # base URL - change this if you're accessing a different warehouse (or the dev warehouse)
+  URLbase = "https://warehouse1.indicia.org.uk/index.php/services/rest/es-irecord-report/_search"
+  
+  #search by username
+  q2 <- paste0('{"query": {"nested": {"path": "event.attributes","query": {"bool": {"must": [{ "match": { "event.attributes.id": "22" }},{ "match": { "event.attributes.value":  "',username,'" }} ]}}}}}')
+  
+  ##make query
+  user_check <- get_data(auth_header = auth_header,query = q2,URLbase=URLbase) # get the data
+  
+  #return NA if failed to connect
+  if(!is.null(user_check$code)){
+    if(user_check$code == 401){
+      return(NA)
+    }
+  }
+  
+  #check if the result has a total number of hits, and that total number of hits is > 0
+  username_result <- FALSE
+  if (!is.null(user_check$hits$total)) {
+    if(user_check$hits$total>0){
+      username_result <- TRUE
+    }
+  }
+  
+  warehouse_id <- unique(user_check$hits$hits$`_source`$metadata$created_by_id)
+  
+  if(length(warehouse_id ) == 1){
+    return(warehouse_id)
+  } else {
+    return(NA)
+  }
 }
 
 check_inat_username <- function(username){

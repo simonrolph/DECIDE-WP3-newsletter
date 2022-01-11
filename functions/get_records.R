@@ -19,12 +19,17 @@ if(F){
   library(httr)
   library(jsonlite)
   username <- "simonrolph"
+  username <- "22727"
+  start_date <- "2021-06-26"
+  end_date <- "2021-06-26"
+  
+  get_records_irecord(username,10,gsub("Â","",Sys.getenv("irecord_key")),start_date,end_date)
 }
 
 
 
 
-get_records_irecord <- function(username,nrecords,secret){
+get_records_irecord <- function(username,nrecords,secret,start_date,end_date){
   #remove spaces (because in iRecord it's presented as "111 111")
   username <- gsub(" ", "", username, fixed = TRUE)
   
@@ -35,11 +40,46 @@ get_records_irecord <- function(username,nrecords,secret){
   # base URL - change this if you're accessing a different warehouse (or the dev warehouse)
   URLbase = "https://warehouse1.indicia.org.uk/index.php/services/rest/es-irecord-report/_search"
   
-  q1 <- paste0('{"size": "',nrecords,'","query":{"bool":{"must":[{"term":{"metadata.created_by_id":"',username,'"}}]}}}')
+  #filtering for records by the user in lepidopter in date range
+  q1 <- paste0(
+    '
+    {
+      "size": "',nrecords,'",
+      "query":{
+        "bool":{
+          "must":[
+            {
+              "term":{
+                "metadata.created_by_id":"',username,'"
+              }
+            },{
+              "term":{
+                "taxon.order.keyword":"Lepidoptera"
+              }
+            },{
+              "range": {
+                "event.date_start":{
+                  "gte": "',start_date,'",
+                  "lte":"',end_date,'"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+    '
+  )
+  
+  
   
   data_raw <- get_data(auth_header = auth_header,query = q1,URLbase=URLbase) # get the data
-  
   data_raw <- data_raw$hits$hits$`_source`
+  
+  #if no records found then return an empty data frame
+  if (is.null(data_raw)){
+    return(data.frame())
+  }
   
   data <- data.frame(
     scientific_name = data_raw$taxon$accepted_name,
