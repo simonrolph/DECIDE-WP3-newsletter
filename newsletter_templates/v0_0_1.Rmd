@@ -86,27 +86,31 @@ all_records <- data.frame(
 
 #get records from iRecord
 if (!is.na(params$irecord_username)){
-  #key <- readLines(file("../.secrets/irecord_key.txt",open="r"))
   irecord_records <- get_records_irecord(params$irecord_username,
-                                         nrecords = 10,
+                                         nrecords = 999,
                                          params$irecord_key,
                                          start_date = start_date,
                                          end_date = end_date)
-  
+  #if records are returned then bind them to the all records df
   if(nrow(irecord_records)!=0){
     irecord_records$website <- "iRecord"
-    
     all_records <- bind_rows(all_records,irecord_records)
   }
 }
 
 #get records from iSpot
 if (!is.na(params$ispot_username)){
-  #key <- readLines(file("../.secrets/ispot_key.txt",open="r"))
-  ispot_records <- get_records_ispot(params$ispot_username,nrecords = 10,params$ispot_key)
-  ispot_records$website <- "iSpot"
+  ispot_records <- get_records_ispot(params$ispot_username,
+                                     nrecords = 10,
+                                     params$ispot_key,
+                                     start_date = start_date,
+                                     end_date = end_date)
   
-  all_records <- bind_rows(all_records,ispot_records)
+  #if records are returned then bind them to the all records df
+  if(nrow(ispot_records)!=0){
+    ispot_records$website <- "iSpot"
+    all_records <- bind_rows(all_records,ispot_records)
+  }
 }
 
 #get records from iNaturalist

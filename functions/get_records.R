@@ -101,12 +101,14 @@ get_records_irecord <- function(username,nrecords,secret,start_date,end_date){
 
 
 
-get_records_ispot <- function(username,nrecords,key){
+get_records_ispot <- function(username,nrecords,key,start_date,end_date){
   res = GET("https://api-api.ispotnature.org/public/api_user.php",
             query = list(
               key = key,
               username = username,
-              limit = nrecords
+              limit = nrecords,
+              startDate = start_date,
+              end_date = end_date
             ))
   data <- fromJSON(rawToChar(res$content))
   
