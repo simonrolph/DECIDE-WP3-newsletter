@@ -68,9 +68,11 @@ Your iSpot username is `r params$ispot_username`
 
 Your iNaturalist username is `r params$inat_username`
 
+This newsletter covers the period `r params$start_date` to `r params$end_date`
+
 </div>
 
-```{r get records from websites, echo = F,warning=FALSE}
+```{r get records from websites, echo = F,warning=FALSE,message=F}
 
 #create an empty dataframe with the corresponding headings
 all_records <- data.frame(
@@ -101,7 +103,7 @@ if (!is.na(params$irecord_username)){
 #get records from iSpot
 if (!is.na(params$ispot_username)){
   ispot_records <- get_records_ispot(params$ispot_username,
-                                     nrecords = 10,
+                                     nrecords = 999,
                                      params$ispot_key,
                                      start_date = start_date,
                                      end_date = end_date)
@@ -163,14 +165,19 @@ all_records$name <- "butterfly" #dummy
 
 ```
 
-```{r get decide score, echo = F}
+```{r get decide score, echo = F, warning = F,message=FALSE}
+#get unique locations / taxon combinations
+unique_locations <- all_records[,c("latitude","longitude","name")] %>% unique()
 
 # get decide score
-all_records$decide_score <- apply(all_records[,c("latitude","longitude","name")],1, function(x) {get_decide_score(x[1],x[2],x[3])})
+unique_locations$decide_score <- apply(unique_locations,1, function(x) {get_decide_score(x[1],x[2],x[3])})
 
 #unlist it but preserve null values
-all_records$decide_score[sapply(all_records$decide_score, is.null)] <- NA
-all_records$decide_score <- unlist(all_records$decide_score)
+unique_locations$decide_score[sapply(unique_locations$decide_score, is.null)] <- NA
+unique_locations$decide_score <- unlist(unique_locations$decide_score)
+
+#join back to main dataframe
+all_records <- suppressMessages(left_join(all_records,unique_locations))
 
 ```
 

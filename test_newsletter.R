@@ -55,13 +55,13 @@ for (user in test_users){
   print(paste0("user:",user$name))
   
   #loop through may, june, july, august, september
-  for (month in 5:8){
+  for (month in 6:8){
     
     print(paste0("month:",month))
     
     #construct strings for start and end date
-    start_date<- paste0("2021-",month,"-01")
-    end_date<- as.character(as.Date(paste0("2021-",month+1,"-01")) -1) #minus one day from the first of the next month
+    start_date<- paste0("2019-",month,"-01")
+    end_date<- as.character(as.Date(paste0("2019-",month+1,"-01")) -1) #minus one day from the first of the next month
     
     markdown_params <- 
       list(

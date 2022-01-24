@@ -86,80 +86,98 @@ ui <- fluidPage(
         tags$link(rel = "stylesheet", type = "text/css", href = "custom_style.css")
     ),
     
-    # Application title
-    img(src = "Decide_artwork_RGB.png",style="max-width: 500px;"),
-    titlePanel("DECIDE: Sign up to your personalised newsletter"),
-    p("In order to send you personalised newsletters about your recording we need to know your email address, and your usernames on your biological recording websites. Please fill out the form below."),
-
-    hr(),
-    #step 1, about the person
-    h4("About you"),
-    textInput("name","Name"),
-    textInput("email","Email"),
-    
-    actionButton("verify_email","Send verification code"),
-    
-    #email verification
-    conditionalPanel(
-        condition = "input.verify_email > 0",
-        textInput("email_validation_code","Email validation code"),
-        actionButton("submit_email_validation_code","Verify email"),
+    div(
+        id = "top_of_page",
+        # Application title
+        img(src = "Decide_artwork_RGB.png",style="max-width: 500px;"),
+        titlePanel("DECIDE: Sign up to your personalised newsletter"),
+        p("In order to send you personalised newsletters about your recording we need to know your email address, and your usernames on your biological recording websites. Please fill out the form below.")
     ),
     
-    #the persons recording platforms and usernames
-    hr(),
-    h4("Your records"),
-    checkboxGroupInput("record_platforms",
-        "What platform(s) do you use for recording?",
-        c("iRecord"="irecord","iSpot"="ispot","iNaturalist" = "inaturalist")
-    ),
-
-    #column for each platform (conditional on whether it's been selected in the record_platforms input)
-    fluidRow(
-        conditionalPanel(
-            condition = "input.record_platforms.includes('irecord') == true",
-            column(
-                width = 4,
-                textInput("irecord_username","iRecord Indicia Warehouse User ID"),
-                htmlOutput("irecord_status")
-            )
-        ),
+    div(id = "identity_questions",
+        hr(),
+        h3("Step 1: confirm your email address"),
+        #step 1, about the person
+        textInput("name","Name",placeholder = "What shall we call you in the email?"),
+        textInput("email","Email",placeholder = "person@example.com"),
         
+        actionButton("verify_email","Send verification code"),
+        
+        #email verification
         conditionalPanel(
-            condition = "input.record_platforms.includes('ispot') == true",
-            column(
-                width = 4,
-                
-                textInput("ispot_username","iSpot Username"),
-                htmlOutput("ispot_status")
-            )
-        ),
-    
-        conditionalPanel(
-            condition = "input.record_platforms.includes('inaturalist') == true",
-            column(
-                width = 4,
-                textInput("inat_username","iNaturalist Username"),
-                htmlOutput("inat_status")
-            )
+            condition = "input.verify_email > 0",
+            textInput("email_validation_code","Email validation code"),
+            actionButton("submit_email_validation_code","Verify email"),
         )
     ),
     
-    #username checker
-    actionButton("username_check","Check usernames"),
-    hr(),
+    div(
+        id="platform_questions",
+        style="display: none;",
+        #the persons recording platforms and usernames
+        hr(),
+        h3("Step 2: Provide information about how you record"),
+        checkboxGroupInput("record_platforms",
+            "What platform(s) do you use for recording?",
+            c("iRecord"="irecord","iSpot"="ispot","iNaturalist" = "inaturalist")
+        ),
     
-    # actions, preview newsletter, send preview, sign up
-    h4("Actions"),
-    actionButton("preview_newsletter","Preview your newsletter"),
-    actionButton("send_preview","Send me the newsletter preview"),
-    actionButton("sign_up","Sign up to mailing list"),
-    #downloadButton('downloadReport',"Download previewed newsletter"),
+        #column for each platform (conditional on whether it's been selected in the record_platforms input)
+        fluidRow(
+            conditionalPanel(
+                condition = "input.record_platforms.includes('irecord') == true",
+                column(
+                    width = 4,
+                    textInput("irecord_username","iRecord Indicia Warehouse User ID"),
+                    htmlOutput("irecord_status")
+                )
+            ),
+            
+            conditionalPanel(
+                condition = "input.record_platforms.includes('ispot') == true",
+                column(
+                    width = 4,
+                    
+                    textInput("ispot_username","iSpot Username"),
+                    htmlOutput("ispot_status")
+                )
+            ),
         
-    #some outputs
-    textOutput("email_status"),
-    textOutput("sign_up_status"),
-    htmlOutput("preview")
+            conditionalPanel(
+                condition = "input.record_platforms.includes('inaturalist') == true",
+                column(
+                    width = 4,
+                    textInput("inat_username","iNaturalist Username"),
+                    htmlOutput("inat_status")
+                )
+            )
+        ),
+        
+        #username checker
+        actionButton("username_check","Check usernames")
+        
+    ),
+    
+    div(
+        id = "sign_up_questions",
+        style="display: none;",
+        
+        hr(),
+        h3("Step 3: Sign up to the mailing list"),
+        # actions, preview newsletter, send preview, sign up
+        actionButton("preview_newsletter","Preview your newsletter"),
+        actionButton("send_preview","Send me the newsletter preview"),
+        actionButton("sign_up_initial","Sign up to mailing list"),
+        #downloadButton('downloadReport',"Download previewed newsletter"),
+            
+        #some outputs
+        textOutput("email_status"),
+        textOutput("sign_up_status"),
+        htmlOutput("preview")
+    ),
+    hr(),
+    p("This is part of the DECIDE project")
+    
 )
     
 
@@ -173,6 +191,8 @@ ui <- fluidPage(
 
 # Define server logic 
 server <- function(input, output) {
+    
+    
     # VERIFYING EMAIL
     
     #validation
@@ -180,19 +200,20 @@ server <- function(input, output) {
     iv$add_rule("name", sv_required())
     iv$add_rule("email", sv_required())
     iv$add_rule("email", sv_email())
-    #iv$add_rule("record_platforms", sv_required())
     iv$enable()
     
     #generate email verification code
     verify_email_code <- eventReactive(input$verify_email,{
         code <- paste(round(runif(4)*8+1),collapse = "")
         code
-        #"1337"
+        "1337"
     })
     
     #generates and sends code via email
     observeEvent(input$verify_email,{
         if(iv$is_valid()) {
+            show("email_validation_code")
+            show("submit_email_validation_code")
             #generate 4 random digits 
             code <- verify_email_code()
             #compose email
@@ -203,17 +224,20 @@ server <- function(input, output) {
             recipients <- c(input$email)
             
             #send the email: I comment this out when testing and make verify_email_code() output the same code each time
-            smtp_send(email_obj,
-                      from = sender,
-                      to = recipients,
-                      subject = "DECIDE email verification code",
-                      #credentials = creds_key("gmail")
-                      #credentials = creds_file(".secrets/gmail")
-                      credentials = creds,
-                      verbose = T
-            )
+            # smtp_send(email_obj,
+            #           from = sender,
+            #           to = recipients,
+            #           subject = "DECIDE email verification code",
+            #           #credentials = creds_key("gmail")
+            #           #credentials = creds_file(".secrets/gmail")
+            #           credentials = creds,
+            #           verbose = T
+            # )
             
-        } 
+        } else{
+            hide("email_validation_code")
+            hide("submit_email_validation_code")
+        }
     })
 
     #checks if the code submitted is the same code as the code that was sent via email
@@ -228,6 +252,7 @@ server <- function(input, output) {
             hide("email_validation_code")
             hide("submit_email_validation_code")
             hide("email_verification_error_message")
+            show("platform_questions")
             
             #use a bootstrap alert to give a positive success message
             insertUI(
@@ -300,6 +325,9 @@ server <- function(input, output) {
             statuses["inaturalist"] <- check_inat_username(input$inat_username)
         }
         
+        if (TRUE %in% statuses){
+            show("sign_up_questions")
+        }
         statuses
     })
     
@@ -376,6 +404,49 @@ server <- function(input, output) {
         }
     )
     
+    
+    observeEvent(input$sign_up_initial, {
+        removeUI(selector = "#sign-up-warning")
+        print(length(input$record_platforms))
+        print(unlist(username_status()))
+        
+        if (length(input$record_platforms)>0 & length(input$record_platforms) == sum(unlist(username_status()))){
+            showModal(modalDialog(
+                title = "Sign-up confirmation",
+                h3("Please check your details before confirming"),
+                strong("Name:"),
+                p(input$name),
+                strong("Email:"),
+                p(input$email),
+                strong("Your record on these platforms:"),
+                p(ifelse("irecord" %in% input$record_platforms,
+                       paste("iRecord - Username:",input$irecord_username),
+                       "")),
+                p(ifelse("ispot" %in% input$record_platforms,
+                       paste("iSpot - Username:",input$ispot_username),
+                       "")),
+                p(ifelse("inaturalist" %in% input$record_platforms,
+                       paste("iNaturalist - Username:",input$inat_username),
+                       "")),
+                easyClose = TRUE,
+                footer = tagList(
+                    modalButton("Amend these details"),
+                    actionButton("sign_up", "Sign up",class="btn btn-success")
+                )
+            ))
+        } else{
+            
+            insertUI(
+                selector = "#sign_up_initial",
+                ui = div(id = "sign-up-warning",
+                    paste0("Please re-check your recording usernames before you sign-up to the mailing list"),class="alert alert-warning",role="danger"),
+                where = "afterEnd"
+            )
+        }
+        
+        
+        
+    })
     
     
     # ADDING USER TO DATABASE
