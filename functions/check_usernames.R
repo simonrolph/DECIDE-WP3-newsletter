@@ -110,7 +110,7 @@ check_ispot_username <- function(username,key){
             ))
   #print(res)
   
-  print(rawToChar(res$content))
+  #print(rawToChar(res$content))
   
   if(rawToChar(res$content) == "\nInvalid API Key"){
     return(NA)
