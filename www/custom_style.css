@@ -1,3 +1,8 @@
 .container-fluid {
-  max-width: 1000px;
+  max-width: 976px;
+}
+
+#preview{
+  border-style: inset;
+  min-height: 100px;
 }

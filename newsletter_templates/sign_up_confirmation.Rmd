@@ -4,9 +4,15 @@ output: blastula::blastula_email
 params:
   name: NULL
   email: NULL
-  irecord_username: NULL
-  ispot_username: NULL
-  inat_username: NULL
+  irecord_username: NA
+  ispot_username: NA
+  inat_username: NA
+  ispot_key: NA
+  irecord_key: NA
+  data_stories: "all"
+  randomise: FALSE
+  start_date: NA
+  end_date: NA
 ---
 
 ```{r setup, include=FALSE}

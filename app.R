@@ -97,6 +97,7 @@ ui <- fluidPage(
     div(id = "identity_questions",
         hr(),
         h3("Step 1: confirm your email address"),
+        p("Please enter your email address, when you click 'send verification code' we will send you an email with a 4 digit code that you can then enter to verify your email address. If you don't receive an email then please check your spam."),
         #step 1, about the person
         
         textInput("email","Email",placeholder = "person@example.com"),
@@ -114,9 +115,12 @@ ui <- fluidPage(
     div(
         id="platform_questions",
         style="display: none;",
+        actionButton("un_sign_up_initial","Unsubscribe from mailing list",class="btn btn-danger"),
         #the persons recording platforms and usernames
         hr(),
         h3("Step 2: Provide information about yourself and how you record"),
+        p("In order to generate the email newseltters we need your IDs on the recording platforms you use. Once you have entered your usernames you need to click on the 'Check usernames' button."),
+        
         textInput("name","Name",placeholder = "What shall we call you in the email?"),
         checkboxGroupInput("record_platforms",
             "What platform(s) do you use for recording?",
@@ -130,6 +134,7 @@ ui <- fluidPage(
                 column(
                     width = 4,
                     textInput("irecord_username","iRecord Indicia Warehouse User ID"),
+                    actionLink("irecord_help","How to find your Indicia Warehouse ID"),
                     htmlOutput("irecord_status")
                 )
             ),
@@ -140,6 +145,7 @@ ui <- fluidPage(
                     width = 4,
                     
                     textInput("ispot_username","iSpot Username"),
+                    actionLink("ispot_help","How to find your iSpot username"),
                     htmlOutput("ispot_status")
                 )
             ),
@@ -149,13 +155,16 @@ ui <- fluidPage(
                 column(
                     width = 4,
                     textInput("inat_username","iNaturalist Username"),
+                    actionLink("inat_help","How to find your iNaturalist username"),
                     htmlOutput("inat_status")
                 )
             )
         ),
+        br(),
         
         #username checker
-        actionButton("username_check","Check usernames")
+        actionButton("username_check","Check usernames"),
+        p(id="loadusernames","Checking usernames...",img(src = "DECIDE_load_small.gif"))
         
     ),
     
@@ -165,19 +174,31 @@ ui <- fluidPage(
         
         hr(),
         h3("Step 3: Sign up to the mailing list"),
+        p(""),
+        actionLink("tsandcsmodal","Read the terms and conditions"),
         checkboxInput("tsandcs","I agree to the terms and conditions of the DECIDE personalised newsletter"),
         # actions, preview newsletter, send preview, sign up
-        actionButton("preview_newsletter","Preview your newsletter"),
-        actionButton("send_preview","Send me the newsletter preview"),
-        actionButton("un_sign_up_initial","Unsubscribe from mailing list",class="btn btn-danger"),
-        actionButton("sign_up_initial","Sign up to mailing list",class="btn btn-success"),
+        p(
+            actionButton("sign_up_initial","Sign up to mailing list",class="btn btn-success")
+            
+        ),
+        p(
+            actionButton("preview_newsletter","Preview your example newsletter"),
+            actionButton("send_preview","Send me the newsletter preview")
+        ),
+        
         
         #downloadButton('downloadReport',"Download previewed newsletter"),
             
         #some outputs
         textOutput("email_status"),
         textOutput("sign_up_status"),
+        p(id="loadmessage","Newsletter preview loading...",img(src = "DECIDE_load_small.gif")),
+        p(id="previewmessage","Preview:"),
         htmlOutput("preview")
+        
+        
+        
     ),
     hr(),
     p("This is part of the DECIDE project")
@@ -270,7 +291,6 @@ server <- function(input, output) {
             hide("email_validation_code")
             hide("submit_email_validation_code")
             hide("email_verification_error_message")
-            show("platform_questions")
             
             
             
@@ -282,12 +302,12 @@ server <- function(input, output) {
             )
             
             #download the user database
-            user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",col_types = c("c"))
+            user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",col_types = c("cccccllcc"))
             user_db <- as.data.frame(user_db)
             selected = c()
             
             # check if the user is already in the database, if they are then show the information we have on them.
-            if (!input$email %in% user_db) {
+            if (!(input$email %in% user_db$email)) {
                 insertUI(
                     selector = "#email_verification_success_message",
                     where = "afterEnd",
@@ -314,17 +334,18 @@ server <- function(input, output) {
                     )
                 )
                 
-                #if the user is already signed up then update the imputs to be appropriate to this
+                #if the user is already signed up then update the inputs to be appropriate to this
                 
                 # fill in their information
                 updateTextInput(inputId = "name", value = user_db[user_id,"name"])
                 updateTextInput(inputId = "irecord_username", value = user_db[user_id,"irecord_username"])
                 updateTextInput(inputId = "ispot_username", value = user_db[user_id,"ispot_username"])
                 updateTextInput(inputId = "inat_username", value = user_db[user_id,"inat_username"])
-                updateActionButton(inputId = "sign_up_initial",label = "Ammend subscription")
-                if(length(user_db[user_id,"irecord_username"])>0){selected <- c(selected,"irecord")}
-                if(length(user_db[user_id,"ispot_username"])>0){selected <- c(selected,"ispot")}
-                if(length(user_db[user_id,"inat_username"])>0){selected <- c(selected,"inaturalist")}
+                
+                updateActionButton(inputId = "sign_up_initial",label = "Update subscription")
+                if(!is.na(user_db[user_id,"irecord_username"])){selected <- c(selected,"irecord")}
+                if(!is.na(user_db[user_id,"ispot_username"])){selected <- c(selected,"ispot")}
+                if(!is.na(user_db[user_id,"inat_username"])){selected <- c(selected,"inaturalist")}
             }
                 
             updateCheckboxGroupInput(inputId = "record_platforms", selected = selected)
@@ -341,6 +362,49 @@ server <- function(input, output) {
                 )
             }
         }
+        show("platform_questions")
+    })
+    
+    observeEvent(input$un_sign_up_initial, {
+        showModal(modalDialog(
+            title = "Unsubscribe",
+            "By unsubscribing you will no longer receive personalised DECIDE newsletters",
+            easyClose = TRUE,
+            footer = tagList(
+                modalButton("Back"),
+                actionButton("un_sign_up_final", "Confirm",class="btn btn-success")
+            )
+        ))
+    })
+    
+    #unsubscribe the user from the mailing list
+    observeEvent(input$un_sign_up_final, {
+        removeModal()
+        
+        overwrite_user <- data.frame(name = "",
+                               email = paste0("zzz",internal_user_data$email),
+                               irecord_username = "",
+                               ispot_username   = "",
+                               inat_username    = "",
+                               terms_and_conditions = NA,
+                               subscribed = F,
+                               subscribed_on = "",
+                               unsubscribed_on = as.character(Sys.Date()))
+        
+        user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",col_types = c("cccccllcc"))
+        user_id <- which(user_db$email == internal_user_data$email)
+        
+        range_to_write <- paste0("A",user_id+1,":I",user_id+1)
+        print(overwrite_user)
+        print(range_to_write)
+        
+        range_write("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",overwrite_user,range = range_to_write,col_names = F)
+        
+        showModal(modalDialog(title = "",
+          p("You have unsubscribed from the the DECIDE personalised newsletter"),
+          easyClose = F
+        ))
+        
     })
     
     
@@ -354,9 +418,12 @@ server <- function(input, output) {
     
     # STEP 2:
     ## CHECKING USERNAMES
+    hide("loadusernames")
     
     #check usernames depending on if the user has said that they record on that platform
     username_status <- eventReactive(input$username_check, {
+        show("loadusernames")
+        
         statuses <- list()
         
         if ("irecord" %in% input$record_platforms){
@@ -376,12 +443,14 @@ server <- function(input, output) {
             internal_user_data$inat_username <<- input$inat_username
         }
         
+        #could show sign up questions at an earlier stage?
         if (TRUE %in% statuses){
             show("sign_up_questions")
         }
         
         internal_user_data$name <<- input$name
         
+        hide("loadusernames")
         statuses
     })
     
@@ -397,11 +466,40 @@ server <- function(input, output) {
     output$inat_status <- 
         renderUI(render_username_check("iNaturalist",username_status()[["inaturalist"]],input$inat_username))
     
+    #ID help popups
+    observeEvent(input$irecord_help, {
+        showModal(modalDialog(
+            title = "Finding your Indicia warehouse ID",
+            "This is an important message!"
+        ))
+    })
+    observeEvent(input$ispot_help, {
+        showModal(modalDialog(
+            title = "Finding your iSpot username",
+            "This is an important message!"
+        ))
+    })
+    observeEvent(input$inat_help, {
+        showModal(modalDialog(
+            title = "Finding your iNaturalist username",
+            "This is an important message!"
+        ))
+    })
     
     
     
     
+    # STEP 3: SIGNING UP
     # signing up
+    observeEvent(input$tsandcsmodal, {
+        showModal(modalDialog(
+            title = "Terms and Conditions",
+            "This is an important message!"
+        ))
+    })
+    
+    hide("send_preview")
+    hide("loadmessage")
     observeEvent(input$sign_up_initial, {
         removeUI(selector = "#sign-up-warning")
         print(length(input$record_platforms))
@@ -412,29 +510,38 @@ server <- function(input, output) {
             input$irecord_username == internal_user_data$irecord_username &
             input$ispot_username == internal_user_data$ispot_username &
             input$inat_username == internal_user_data$inat_username){
-            showModal(modalDialog(
-                title = "Sign-up confirmation",
-                h3("Please check your details before confirming"),
-                strong("Name:"),
-                p(input$name),
-                strong("Email:"),
-                p(input$email),
-                strong("Your record on these platforms:"),
-                p(ifelse("irecord" %in% input$record_platforms,
-                         paste("iRecord - Username:",input$irecord_username),
-                         "")),
-                p(ifelse("ispot" %in% input$record_platforms,
-                         paste("iSpot - Username:",input$ispot_username),
-                         "")),
-                p(ifelse("inaturalist" %in% input$record_platforms,
-                         paste("iNaturalist - Username:",input$inat_username),
-                         "")),
-                easyClose = TRUE,
-                footer = tagList(
-                    modalButton("Amend these details"),
-                    actionButton("sign_up", "Sign up",class="btn btn-success")
+            
+            if(input$tsandcs){
+                showModal(modalDialog(
+                    title = "Sign-up confirmation",
+                    strong("Name:"),
+                    p(input$name),
+                    strong("Email:"),
+                    p(input$email),
+                    strong("Your record on these platforms:"),
+                    p(ifelse("irecord" %in% input$record_platforms,
+                             paste("iRecord - Username:",input$irecord_username),
+                             "")),
+                    p(ifelse("ispot" %in% input$record_platforms,
+                             paste("iSpot - Username:",input$ispot_username),
+                             "")),
+                    p(ifelse("inaturalist" %in% input$record_platforms,
+                             paste("iNaturalist - Username:",input$inat_username),
+                             "")),
+                    easyClose = TRUE,
+                    footer = tagList(
+                        modalButton("Back"),
+                        actionButton("sign_up", "Confirm",class="btn btn-success")
+                    )
+                ))
+            } else {
+                insertUI(
+                    selector = "#sign_up_initial",
+                    ui = div(id = "sign-up-warning",
+                             paste0("You must agree to the terms and conditions to sign up to the personalised newsletter"),class="alert alert-warning",role="danger"),
+                    where = "afterEnd"
                 )
-            ))
+            }
         } else{
             
             insertUI(
@@ -450,7 +557,7 @@ server <- function(input, output) {
     
     
     
-    
+    preview_rendered <- F
     # GENERATING NEWSLETTER PREVIEW
     #get the inputs into a list ready for parametised markdown reports, providing NAs if that recording platform is not used
     markdown_params <- reactive({
@@ -464,20 +571,42 @@ server <- function(input, output) {
             inat_username = 
                 ifelse("inaturalist" %in% input$record_platforms,input$inat_username,NA),
             irecord_key      = gsub("Â","",Sys.getenv("irecord_key")),
-            ispot_key        = Sys.getenv("ispot_key")
+            ispot_key        = Sys.getenv("ispot_key"),
+            start_date = as.character(Sys.Date()-2000),
+            end_date = as.character(Sys.Date())
         )
     })
     
     # create the newsletter
     newsletter_file_location <- eventReactive(input$preview_newsletter, {
+        show("loadmessage")
         print("Generating newsletter preview")
         out_file_name <- paste0("../newsletters/previews/",input$name,".html")
         out <- render("newsletter_templates/v0_0_1.Rmd",
                       output_file = out_file_name,
                       params = markdown_params(),
         )
+        preview_rendered <<- T
+        show("send_preview")
+
+        hide("loadmessage")
         out
     })
+    
+    #render the email preview into a modal
+    #not used
+    # observeEvent(input$preview_newsletter, {
+    #     showModal(modalDialog(
+    #         title = "Email preview",
+    #         size = "l",
+    #         p(id="placeholder","This is an important message!")
+    #     ))
+    #     insertUI(
+    #         selector = "#placeholder",
+    #         where = "afterEnd",
+    #         ui = HTML(paste(readLines(newsletter_file_location()), collapse="\n"))
+    #     )
+    # })
     
     # render the newsletter preview in the shiny app
     output$preview <- renderUI(HTML(paste(readLines(newsletter_file_location()), collapse="\n")))
@@ -505,6 +634,7 @@ server <- function(input, output) {
     output$email_status <- renderText(email_success())
 
     #download a html version of the newsletter
+    # not used - only send via email
     output$downloadReport <- downloadHandler(
         filename = function() {
             paste('my-report.html')
@@ -522,64 +652,76 @@ server <- function(input, output) {
     # ADDING USER TO DATABASE
     sign_up_success <- eventReactive(input$sign_up,{
         #load the user database
-        user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes")
+        user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",col_types = c("cccccllcc"))
+        
+        
+        
+        
+        
+        
+        new_user <- data.frame(name = input$name,
+                               email = input$email,
+                               irecord_username = input$irecord_username,
+                               ispot_username   = input$ispot_username,
+                               inat_username    = input$inat_username,
+                               terms_and_conditions = input$tsandcs,
+                               subscribed = T,
+                               subscribed_on = as.character(Sys.Date()),
+                               unsubscribed_on = "")
     
         
         #do some checks before adding the user:
         #check user is new
-        
-        # validate usernames and email
-        
         if(!input$email %in% user_db$email){
             #add the user
-            new_user <- data.frame(name = input$name,
-                                   email = input$email,
-                                   irecord_username = input$irecord_username,
-                                   ispot_username   = input$ispot_username,
-                                   inat_username    = input$inat_username)
-            
             sheet_append("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",new_user)
-            
             print("New user successfully added, sending email...")
             
-            out_file_name <- paste0("../newsletters/previews/confirmation_",input$name,".html")
-            out <- render("newsletter_templates/sign_up_confirmation.Rmd",
-                          output_file = out_file_name,
-                          params = markdown_params(),
-            )
-            
-            sender <- "simonrolph.ukceh@gmail.com"
-            recipients <- c(input$email)
-            
-            email_obj <- blastula:::cid_images(out)
-            
-            smtp_send(email_obj,
-                      from = sender,
-                      to = recipients,
-                      subject = "Welcome to the DECIDE newsletter",
-                      credentials = creds
-            )
-            
-            removeModal()
-            print("New user successfully added, sent email.")
-            
+        #otherwise, if already in the database then update their details
         } else{
-            removeModal()
-            
-            #pr go to static page
-            showModal(modalDialog(title = "Success!",
-                                  p("You have successfully signed up to the DECIDE personalised newsletter"),
-                                  p("You will receive confirmation via email"),
-                                  p("Share this page"),
-                                  p("Go to DECIDE app and start planning your next recording visit"),
-                                  p("Sign up to mailing list"),
-                                  easyClose = F
-                
-            ))
-            
-            #don't add the user but provide a message why
-            print("Email already detected")
+            #work out where in the spreadsheet to edit
+            user_id <- which(user_db$email == internal_user_data$email)
+            range_to_write <- paste0("A",user_id+1,":I",user_id+1)
+            range_write("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",new_user,range = range_to_write,col_names = F)
+    
+            #add the user but provide a message why
+            print("Email already detected so editing user details, sending email...")
         }
+        
+        removeModal()
+        #show success modal with onward links
+        showModal(modalDialog(title = "Success!",
+                              p("You have successfully signed up to the DECIDE personalised newsletter."),
+                              p("You will receive confirmation via email"),
+                              p("Share this page"),
+                              p("Go to DECIDE app and start planning your next recording visit"),
+                              p("Sign up to mailing list"),
+                              easyClose = F
+                              
+        ))
+        
+        #send email confirmation
+        out_file_name <- paste0("../newsletters/previews/confirmation_",input$name,".html")
+        out <- render("newsletter_templates/sign_up_confirmation.Rmd",
+                      output_file = out_file_name,
+                      params = markdown_params(),
+        )
+        
+        sender <- "simonrolph.ukceh@gmail.com"
+        recipients <- c(input$email)
+        
+        email_obj <- blastula:::cid_images(out)
+        
+        smtp_send(email_obj,
+                  from = sender,
+                  to = recipients,
+                  subject = "Welcome to the DECIDE newsletter",
+                  credentials = creds
+        )
+        
+        
+        
+        print("New user successfully added, sent email.")
         
     })
     
