@@ -1,4 +1,4 @@
-# DECIDE personalised recording newslette
+# DECIDE personalised recording newsletter
 
 ## Overview
 
