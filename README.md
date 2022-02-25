@@ -10,6 +10,8 @@ There are three key modules that make this work.
  2. The newsletter templates (in `/newsletter_templates/`) which are parametetised R markdown documents that generate the newsletter content by downloading records and .
  3. A R markdown document (`send_newsletters.Rmd`) loads all the users from the Google sheets, generates all their newsletters and then sends them all out.
 
+Google sheets is only being used in prototyping. Ethics approval for the project requires that data is stored on UKCEH systems. This likely means that details will be stored in a file (eg. csv) within the app.
+
 All works together something like this:
 ![image](https://user-images.githubusercontent.com/17750766/148249218-df887d2e-0910-4f05-8bc3-d1ce6a5e86a1.png)
 
