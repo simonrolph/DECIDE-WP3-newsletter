@@ -1,4 +1,4 @@
-# DECIDE WP3 newsletter
+# DECIDE personalised recording newslette
 
 ## Overview
 
