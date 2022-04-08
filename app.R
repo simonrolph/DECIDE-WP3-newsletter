@@ -1,6 +1,7 @@
 library(knitr)
 library(rmarkdown)
 library(shiny)
+library(bslib)
 library(httr)
 library(jsonlite)
 library(blastula)
@@ -14,7 +15,7 @@ source("functions/check_usernames.R")
 source("functions/get_data.R")
 
 source("functions/get_records.R")
-
+devtools::source_url("https://github.com/NERC-CEH/UKCEH_shiny_theming/blob/main/theme_elements.R?raw=TRUE")
 
 #note secrets should be set up with environemnt variables: https://support.rstudio.com/hc/en-us/articles/228272368-Managing-your-content-in-RStudio-Connect
 
@@ -85,6 +86,8 @@ ui <- fluidPage(
     tags$head(
         tags$link(rel = "stylesheet", type = "text/css", href = "custom_style.css")
     ),
+    
+    
     
     div(
         id = "top_of_page",
@@ -175,8 +178,8 @@ ui <- fluidPage(
         hr(),
         h3("Step 3: Sign up to the mailing list"),
         p(""),
-        actionLink("tsandcsmodal","Read the terms and conditions"),
-        checkboxInput("tsandcs","I agree to the terms and conditions of the DECIDE personalised newsletter"),
+        actionLink("tsandcsmodal","Data usage statement"),
+        checkboxInput("tsandcs","I agree use of my data as part of the DECIDE project as outlined in the data usage statement"),
         # actions, preview newsletter, send preview, sign up
         p(
             actionButton("sign_up_initial","Sign up to mailing list",class="btn btn-success")
@@ -494,7 +497,9 @@ server <- function(input, output) {
     observeEvent(input$tsandcsmodal, {
         showModal(modalDialog(
             title = "Terms and Conditions",
-            "This is an important message!"
+            #generated using
+            #https://word2md.com/
+            includeMarkdown("www/DECIDE tool user registration text.md"),
         ))
     })
     
