@@ -1,0 +1,350 @@
+---
+title: "Your Personalised Newsletter"
+output: blastula::blastula_email
+params:
+    user: "Keywood, B. Ben"
+    month_featured: 7
+    year_featured: 2019
+    
+---
+
+```{r setup, include=FALSE}
+# this is an rmarkdown document for prototyping the newsletter data stories
+
+knitr::opts_chunk$set(echo = F,warning = F,message = FALSE)
+
+#if running interactively you need to set working directory
+setwd("~/R/DECIDE-WP3-newsletter/data_story_development")
+```
+
+```{r, include = F}
+#load packages
+
+library(dplyr) #data manipulation
+library(ggplot2) #plotting
+library(sf) #spatial processing
+library(ggspatial) # for plotting static maps
+
+library(nominatimlite) # for getting place names
+
+library(htmltools) #for functions like HTML(), h3(), p() etc.
+library(blastula) # for the blastula::blastula_email format defined in the yaml - at least need to have it installed if not actually loaded
+
+#for api requests:
+library(jsonlite)
+library(httr)
+library(geojsonsf)
+
+#tom's package - might come in handy - not currently used
+#devtools::install_github('biologicalrecordscentre/recorderMetrics')
+
+#doesn't seem to work specifying a custom css file so just put any css in here:
+```
+
+
+```{css, echo=FALSE}
+/* circle photo*/
+.circleimage{
+  width:300px;
+  height:300px;
+  object-fit:cover;
+  border-radius:50%;
+}
+
+
+```
+
+
+
+```{r load_data, include = F}
+#DATA PREPARATION
+
+#load in the sample data downloaded from inaturalist and processed in this file: https://github.com/BiologicalRecordsCentre/DECIDE-dynamic-dataflow/blob/cfdc8d4315a65762e326122e72e0a98b1bb4dadc/prototypes/generate_test_data_set_for_newsletters.R
+sample_data <- readRDS("sample_data_for_newsletters.rds")
+
+#get grid square (as a proxy for 'site')
+#these aren't the proper SK435934 grid references but they have unique values for each 100x100m grid square
+round_to_centre_of_grid <- function(x){ round(x-49.99,-2)+50}
+sample_data$grid_square <- paste0(round_to_centre_of_grid(sample_data$easting),
+                                  round_to_centre_of_grid(sample_data$northing))
+
+
+#select only relevant columns
+sample_data <- sample_data %>% select(
+  scientific_name = species,
+  latitude = decimalLatitude,
+  longitude = decimalLongitude,
+  easting,
+  northing,
+  grid_square,
+  observed_by = recordedBy,
+  observed_on = eventDate,
+  day,
+  month,
+  year,
+  url = occurrenceID,
+  recording_priority
+)
+
+#show column names
+names(sample_data)
+```
+
+```{r filters, include = F}
+
+#filtering parameters
+username <- params$user
+month_featured <- params$month_featured
+year_featured <- params$year_featured
+
+```
+
+```{r produce_dataframes, include = F}
+#generate data frames that we can use later on
+individual_data <- sample_data %>% 
+  filter(observed_by == username,year == year_featured) %>% 
+  mutate(target_user = T) #just the user
+sample_data <- sample_data %>% 
+  filter(observed_by != username,year == year_featured) %>% 
+  mutate(target_user = F)# everyone else
+
+combined_data <- bind_rows(individual_data,sample_data)
+
+
+#exploratory code (for finding a user with records)
+if(F){
+  #show usernames of people who record a lot
+  sample_data %>% st_drop_geometry() %>% group_by(observed_by) %>% summarise(n = n()) %>% arrange(-n)
+  
+  #explore a persons records:
+  #how many per year
+  individual_data %>% group_by(year) %>% summarise(n = n())
+  
+  #just plot points on a x / y
+  ggplot(individual_data ,aes(x = longitude,y = latitude))+
+    geom_point()
+  
+  #Stuff to do with filtering the sample data set to only show records a single month
+  #see how many records per month
+  individual_data %>% group_by(month,year) %>% summarise(n = n()) %>% arrange(-year,-month)
+}
+
+
+#filter data by that month/year
+individual_data_this_month <- individual_data %>% filter(month == month_featured,year == year_featured)
+
+#everone else's data for that month
+community_data_this_month <- sample_data %>% filter(month == month_featured,year == year_featured)
+
+#combined both people the target user and 
+combined_data_this_month <- combined_data %>% filter(month == month_featured,year == year_featured)
+
+#define month_name to be used in the text
+month_name <- month.name[month_featured]
+
+
+# So now we've got 6 data frames to use (lots of redundancy..)
+#individual_data: Just the target user's data for the target year
+#sample_data: EVeryone else's data for the target year
+#combined_data: both the individual's data(target_user=T) and everyone else's (target_user=F)
+#individual_data_this_month: as above but only the target_month
+#sample_data_this_month: as above but only the target_month
+#combined_data_this_month: as above but only the target_month
+
+
+### ACTUAL NEWSLETTER CONTENT STARTS BELOW
+```
+
+![](../www/Decide_artwork_RGB.png)
+
+# Your personalised newsletter
+
+```{r}
+p(paste0("Welcome to your personalised newsletter for ", month_name, ". Here are your insights for based on your recording from last month."))
+
+hr() #line across
+
+```
+
+
+### Great find!
+
+```{r ds1, echo  = F, results='asis'}
+#DATA STORY 1
+
+# PROCESS
+
+#what was their top visit in terms of recording priority?
+top_visit <- individual_data_this_month %>% 
+  group_by(grid_square,observed_on) %>% #group by 'visit'
+  summarise(recording_priority = mean(recording_priority), #get the decide score for that visit
+            n_species = length(unique(scientific_name)), #number of species in that visit
+            scientific_name = first(scientific_name),
+            latitude = first(latitude),
+            longitude = first(longitude)) %>% #get a species name
+  arrange(desc(recording_priority)) %>% #order by decide score
+  head(1)
+
+
+#get some sort of place name
+place_name <- reverse_geo_lite(lat = top_visit$latitude,lon = top_visit$longitude,full_results = T)
+place_name <- paste0(place_name$suburb,", ",place_name$city)
+
+
+res <- GET("https://api.inaturalist.org/v1/taxa",
+            query = list(
+              q = top_visit$scientific_name,
+              per_page = 1
+            ))
+
+data <- fromJSON(rawToChar(res$content))
+
+photo_url <- data$results$default_photo$medium_url
+photo_attribution <- data$results$default_photo$attribution
+
+  
+# VISUALISE
+p("Your visit last month to the highest recording priority area was your visit to ",place_name,"  and recorded ",top_visit$n_species," species. One of the species you recorded was",em(paste0(top_visit$scientific_name,"."))) %>% print()
+
+img(src=photo_url,class="circleimage") %>% print()
+p(em(photo_attribution)) %>% print()
+
+p(a("Go to DECIDE", href="https://decide.ceh.ac.uk/opts/scoremap/map"))
+
+hr() #line across
+```
+
+### Going the extra mile
+
+```{r ds2, echo  = F, results='asis'}
+#DATA STORY 2
+
+# PROCESS
+
+#arbitrary threshold then group by location
+high_priority_records <- individual_data_this_month %>% 
+  filter(recording_priority >0.008) %>% 
+  group_by(grid_square) %>% 
+  summarise(n=n(),
+            n_species = length(unique(scientific_name)),
+            latitude = first(latitude),
+            longitude = first(longitude))
+
+#how many species in total were recorded at these high priority locations?
+n_species <- individual_data_this_month %>% filter(recording_priority >0.008) %>% pull(scientific_name) %>% unique() %>% length()
+
+#get suggestions from the DECIDE tool
+
+#select a central point to get suggestions - in this basic case it's just the first record in the high_priority_records df
+central_point_lat <- high_priority_records$latitude[1]
+central_point_long <- high_priority_records$longitude[1]
+
+#do the request
+res = GET("https://decide.ceh.ac.uk/score/nudges",
+            query = list(
+              lat = toString(central_point_lat),
+              lon = toString(central_point_long),
+              rad = 5000,
+              name = "butterfly",
+              min = "1",
+              max = "10"
+            ))
+#read the JSON
+suggestions <- fromJSON(fromJSON(rawToChar(res$content)))
+#get the geojson
+suggestions <- suggestions$geojson %>% geojson_sf()
+
+# VISUALISE
+
+# 
+p("In",month_name,"you recorded in ", nrow(high_priority_records) ,"high value locations and recorded a total of ",n_species," species at these sites. Records at these sites fill gaps in our understanding of species’ distributions.")
+
+# generate the map using ggspatial package
+ds2_map <- ggplot() +
+  # loads background map tiles from a tile source
+  annotation_map_tile(zoomin = -1,progress="none")+
+  layer_spatial(high_priority_records,mapping = aes(size = n))+ 
+  fixed_plot_aspect() #make the plot square
+
+#cat("<div class='circlemap'>") # this isa way we can apply css to images that are plotted by putting them in the
+print(ds2_map)
+#cat("</div>")
+
+p("Why not go here:")
+
+ds2_map_2 <- ggplot() +
+  # loads background map tiles from a tile source
+  annotation_map_tile(zoomin = -1,progress="none")+
+  layer_spatial(suggestions)+ 
+  fixed_plot_aspect()
+
+print(ds2_map_2)
+
+
+p(a("Go to DECIDE", href="https://decide.ceh.ac.uk/opts/scoremap/map"))
+
+
+hr() #line across
+```
+
+### Community recording near you
+
+```{r ds3, echo  = F}
+#DATA STORY 3
+
+# PROCESS
+
+
+# VISUALISE
+p("Look at all those dots")
+
+ds3_map <-ggplot()+
+  annotation_map_tile(zoomin = -1)+
+  annotation_spatial(community_data_this_month, col = "black") +
+  layer_spatial(individual_data_this_month,col = "red")+ 
+  fixed_plot_aspect()
+
+print(ds3_map)
+
+p(a("Go to DECIDE", href="https://decide.ceh.ac.uk/opts/scoremap/map"))
+
+hr() #line across
+```
+
+### Your DECIDE reputation
+
+```{r ds4, echo  = F}
+#DATA STORY 4
+
+# PROCESS
+decide_reputation_data <- individual_data %>% 
+  filter(year==year_featured,month < (month_featured+1)) %>% #get the target year / month range
+  group_by(grid_square,observed_on) %>% #only look at visits
+  summarise(recording_priority = mean(recording_priority))%>% 
+  arrange(observed_on)
+
+#cumulative sum
+decide_reputation_data$cumulative_recording_priority <- cumsum(decide_reputation_data$recording_priority)
+
+
+
+
+# VISUALISE
+p(paste0("In ",month_name," you recorded some stuff look at this plot"))
+
+ds4_plot <- ggplot(decide_reputation_data,aes(x = observed_on ,y = cumulative_recording_priority*1000))+
+  geom_line(size = 2)+
+  xlab("Date")+
+  ylab("DECIDE-o-meter")
+
+print(ds4_plot)
+
+p(a("Go to DECIDE", href="https://decide.ceh.ac.uk/opts/scoremap/map"))
+
+hr() #line across
+```
+
+This newsletter was generated on `r Sys.time()`
+
+Don\'t want to receive these emails any more? <a>Unsubscribe from the DECIDE personalised newsletter</a>
+
