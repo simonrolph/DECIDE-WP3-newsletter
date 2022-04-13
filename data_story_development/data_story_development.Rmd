@@ -299,7 +299,7 @@ hr() #line across
 p("Look at all those dots")
 
 ds3_map <-ggplot()+
-  annotation_map_tile(zoomin = -1)+
+  annotation_map_tile(zoomin = -1,progress="none")+
   annotation_spatial(community_data_this_month, col = "black") +
   layer_spatial(individual_data_this_month,col = "red")+ 
   fixed_plot_aspect()
