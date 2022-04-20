@@ -5,7 +5,7 @@ params:
     user: "Keywood, B. Ben"
     month_featured: 8
     year_featured: 2019
-    personalised: TRUE
+    personalised: FALSE
 ---
 
 ```{r setup, include=FALSE}
@@ -14,7 +14,8 @@ params:
 knitr::opts_chunk$set(echo = F,warning = F,message = FALSE)
 
 #if running interactively you need to set working directory
-setwd("~/R/DECIDE-WP3-newsletter/data_story_development")
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+#setwd("~/R/DECIDE-WP3-newsletter/data_story_development")
 ```
 
 ```{r, include = F}
