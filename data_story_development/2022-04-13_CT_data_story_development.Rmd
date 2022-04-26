@@ -5,13 +5,13 @@ params:
     user: "Keywood, B. Ben"
     month_featured: 8
     year_featured: 2019
-    personalised: FALSE
+    personalised: TRUE
 ---
 
 ```{r setup, include=FALSE}
 # this is an rmarkdown document for prototyping the newsletter data stories
 
-knitr::opts_chunk$set(echo = F,warning = F,message = FALSE)
+knitr::opts_chunk$set(echo = F,warning = F,message = FALSE, fig.align = 'center') # one could add this for ailigning all images to the centre
 
 #if running interactively you need to set working directory
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
@@ -51,14 +51,21 @@ library(geojsonsf)
   height:300px;
   object-fit:cover;
   border-radius:50%;
-  margin-left: auto;
-  margin-right: auto;
 }
 
 body{
   font-family: Helvetica;
   font-size: 14pt;
 }
+
+/*
+.dataStoryImage{
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 80%;
+}
+*/
 
 
 ```
@@ -266,7 +273,7 @@ photo_attribution <- data$results$default_photo$attribution
   
 # VISUALISE
 if(personalised){
-  p("Your visit in ",month_name_got_personal_records_from," to the highest recording priority area was your visit to ",place_name,"  and recorded ",top_visit$n_species," species. One of the species you recorded was",em(paste0(top_visit$scientific_name,"."))) %>% print() #if a p() function (or equivalent) is in an if statement you need to print it using print()
+  p("In ",month_name_got_personal_records_from,", your highest recording priority records was from your visit to ",place_name," where you recorded ",top_visit$n_species," species. One of the species you recorded was",em(paste0(top_visit$scientific_name,"."))) %>% print() #if a p() function (or equivalent) is in an if statement you need to print it using print()
 } else {
   p("A visit last month to the highest recording priority area was a visit to ",place_name,"  and recorded ",top_visit$n_species," species. One of the species recorded was",em(paste0(top_visit$scientific_name,"."))) %>% print()
 }
@@ -350,9 +357,9 @@ if(personalised){
         plot.caption = element_text(color = "#767675", face = "italic"))+ 
     labs(caption = "Square size indicates the number of records in a location")
   
-  #cat("<div class='circlemap'>") # this isa way we can apply css to images that are plotted by putting them in the
+  cat("<div class='dataStoryImage'>") # this isa way we can apply css to images that are plotted by putting them in the
   print(ds2_map)
-  #cat("</div>")
+  cat("</div>")
 }
 
 h3("Some inspiration?") %>% print()
@@ -436,7 +443,7 @@ p(a("Go to DECIDE", href="https://decide.ceh.ac.uk/opts/scoremap/map"))
 hr() #line across
 ```
 
-### How is your DECIDE score?
+### DECIDE score over the months?
 
 ```{r ds4, echo  = F, results='asis'}
 #DATA STORY 4
