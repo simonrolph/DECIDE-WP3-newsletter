@@ -14,7 +14,7 @@ params:
 knitr::opts_chunk$set(echo = F,warning = F,message = FALSE)
 
 #if running interactively you need to set working directory
-setwd("~/R/DECIDE-WP3-newsletter/data_story_development")
+#setwd("~/R/DECIDE-WP3-newsletter/data_story_development")
 ```
 
 ```{r, include = F}
