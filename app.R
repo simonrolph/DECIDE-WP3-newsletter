@@ -10,12 +10,13 @@ library(curl)
 library(shinyvalidate)
 library(shinyjs)
 library(googlesheets4)
+library(markdown)
 
 source("functions/check_usernames.R")
 source("functions/get_data.R")
 
 source("functions/get_records.R")
-devtools::source_url("https://github.com/NERC-CEH/UKCEH_shiny_theming/blob/main/theme_elements.R?raw=TRUE")
+#devtools::source_url("https://github.com/NERC-CEH/UKCEH_shiny_theming/blob/main/theme_elements.R?raw=TRUE")
 
 #note secrets should be set up with environemnt variables: https://support.rstudio.com/hc/en-us/articles/228272368-Managing-your-content-in-RStudio-Connect
 
@@ -92,8 +93,8 @@ ui <- fluidPage(
     div(
         id = "top_of_page",
         # Application title
-        img(src = "Decide_artwork_RGB.png",style="max-width: 500px;"),
-        titlePanel("DECIDE: Sign up to your personalised newsletter"),
+        #img(src = "Decide_artwork_RGB.png",style="max-width: 500px;"),
+        titlePanel("Sign up to your personalised newsletter"),
         p("In order to send you personalised newsletters about your recording we need to know your email address, and your usernames on your biological recording websites. Please fill out the form below.")
     ),
     
@@ -167,7 +168,7 @@ ui <- fluidPage(
         
         #username checker
         actionButton("username_check","Check usernames"),
-        p(id="loadusernames","Checking usernames...",img(src = "DECIDE_load_small.gif"))
+        p(id="loadusernames","Checking usernames...",img(src = "images/DECIDE_load_small.gif"))
         
     ),
     
@@ -185,26 +186,30 @@ ui <- fluidPage(
             actionButton("sign_up_initial","Sign up to mailing list",class="btn btn-success")
             
         ),
-        p(
-            actionButton("preview_newsletter","Preview your example newsletter"),
-            actionButton("send_preview","Send me the newsletter preview")
-        ),
         
+        # p(
+        #     actionButton("preview_newsletter","Preview your example newsletter"),
+        #     actionButton("send_preview","Send me the newsletter preview")
+        # ),
+        # 
         
         #downloadButton('downloadReport',"Download previewed newsletter"),
             
         #some outputs
         textOutput("email_status"),
-        textOutput("sign_up_status"),
-        p(id="loadmessage","Newsletter preview loading...",img(src = "DECIDE_load_small.gif")),
-        p(id="previewmessage","Preview:"),
-        htmlOutput("preview")
+        textOutput("sign_up_status")#,
+        
+        # p(id="loadmessage","Newsletter preview loading...",img(src = "images/DECIDE_load_small.gif")),
+        # p(id="previewmessage","Preview:"),
+        # htmlOutput("preview")
         
         
         
     ),
-    hr(),
-    p("This is part of the DECIDE project")
+    # hr(),
+    # p("This is part of the DECIDE project"),
+    
+    br()
     
 )
     
@@ -472,20 +477,20 @@ server <- function(input, output) {
     #ID help popups
     observeEvent(input$irecord_help, {
         showModal(modalDialog(
-            title = "Finding your Indicia warehouse ID",
-            "This is an important message!"
+            title = "Finding your Indicia warehouse user ID",
+            includeMarkdown("www/get_indicia_warehouse_id.md"),
         ))
     })
     observeEvent(input$ispot_help, {
         showModal(modalDialog(
             title = "Finding your iSpot username",
-            "This is an important message!"
+            includeMarkdown("www/get_ispot_id.md"),
         ))
     })
     observeEvent(input$inat_help, {
         showModal(modalDialog(
             title = "Finding your iNaturalist username",
-            "This is an important message!"
+            includeMarkdown("www/get_inat_id.md"),
         ))
     })
     

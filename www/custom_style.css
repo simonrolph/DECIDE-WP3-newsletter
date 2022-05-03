@@ -1,8 +1,16 @@
+/*
 .container-fluid {
   max-width: 976px;
 }
+*/
 
 #preview{
   border-style: inset;
   min-height: 100px;
+}
+
+img{
+  width: 100%;
+  max-width: 450px;
+  height: auto;
 }
