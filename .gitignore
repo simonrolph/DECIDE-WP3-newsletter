@@ -12,3 +12,7 @@ sign_up_app/rsconnect/
 sign_up_app/renv/
 sign_up_app/sign_up_app.Rproj
 sign_up_app/.Rprofile
+sign_up_app/email_renders/*.html
+
+
+sign_up_app/data/sign_up_data.rds

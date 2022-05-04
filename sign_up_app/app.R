@@ -17,16 +17,24 @@ source("functions/get_data.R")
 
 #note secrets should be set up with environemnt variables: https://support.rstudio.com/hc/en-us/articles/228272368-Managing-your-content-in-RStudio-Connect
 
+# No longer using google sheets for data storat but the code is still in here but commented in case it is useful for future implmentations. All lines with #GSHEETS are google sheet relevant lines
+
 # authentication set up (do once)
-if(F){
-    #google sheets #GSHEETS
-    # designate project-specific cache
-    options(gargle_oauth_cache = ".secrets")
-    # check the value of the option, if you like
-    gargle::gargle_oauth_cache() 
-    gs4_auth()
-    list.files(".secrets/") 
-}
+# if(F){
+#     #google sheets #GSHEETS
+#     # designate project-specific cache
+#     options(gargle_oauth_cache = ".secrets")
+#     # check the value of the option, if you like
+#     gargle::gargle_oauth_cache() 
+#     gs4_auth()
+#     list.files(".secrets/") 
+# }
+# 
+# # sheets reauth with specified token and email address (run each time when app is run)
+# gs4_auth(
+#     cache = ".secrets",
+#     email = "simonrolph.ukceh@gmail.com"
+# )
 
 
 # create credentials from environment variables
@@ -57,11 +65,7 @@ if(grepl("simrol/Documents/R/DECIDE-WP3-newsletter",getwd())){
 }
 
 
-# sheets reauth with specified token and email address (run each time when app is run)
-gs4_auth(
-    cache = ".secrets",
-    email = "simonrolph.ukceh@gmail.com"
-)
+
 
 # --------------------------------------------------------------------------------- UI
 # Define UI for application
@@ -153,7 +157,7 @@ ui <- fluidPage(
         
         #username checker
         actionButton("username_check","Check usernames"),
-        p(id="loadusernames","Checking usernames...",img(src = "images/DECIDE_load_small.gif"))
+        p(id="loadusernames","Checking usernames...",img(src = "images/DECIDE_load_small.gif",class="load_spinner"))
         
     ),
     
@@ -184,7 +188,7 @@ ui <- fluidPage(
         textOutput("email_status"),
         textOutput("sign_up_status")#,
         
-        # p(id="loadmessage","Newsletter preview loading...",img(src = "images/DECIDE_load_small.gif")),
+        # p(id="loadmessage","Newsletter preview loading...",img(src = "images/DECIDE_load_small.gif",class="load_spinner")),
         # p(id="previewmessage","Preview:"),
         # htmlOutput("preview")
         
@@ -230,7 +234,7 @@ server <- function(input, output) {
     verify_email_code <- eventReactive(input$verify_email,{
         code <- paste(round(runif(4)*8+1),collapse = "")
         code
-        "1337"
+        #"1337"
     })
     
     internal_user_data$email <- eventReactive(input$verify_email,{input$email})
@@ -296,9 +300,12 @@ server <- function(input, output) {
             )
             
             #download the user database
-            user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",col_types = c("cccccllcc")) #GSHEETS
+            # user_db <- range_read("sheet_id",col_types = c("cccccllcc")) #GSHEETS
+            # user_db <- as.data.frame(user_db) #GSHEETS
             
-            user_db <- as.data.frame(user_db)
+            user_db <- readRDS("data/sign_up_data.rds")
+            
+            
             selected = c()
             
             # check if the user is already in the database, if they are then show the information we have on them.
@@ -386,14 +393,18 @@ server <- function(input, output) {
                                subscribed_on = "",
                                unsubscribed_on = as.character(Sys.Date()))
         
-        user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",col_types = c("cccccllcc")) #GSHEETS
+        #user_db <- range_read("sheet_id",col_types = c("cccccllcc")) #GSHEETS
+        user_db <- readRDS("data/sign_up_data.rds")
+        
         user_id <- which(user_db$email == internal_user_data$email)
         
-        range_to_write <- paste0("A",user_id+1,":I",user_id+1) #GSHEETS
-        print(overwrite_user)
-        print(range_to_write)
+        user_db[user_id,] <- overwrite_user
+        #range_to_write <- paste0("A",user_id+1,":I",user_id+1) #GSHEETS
         
-        range_write("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",overwrite_user,range = range_to_write,col_names = F) #GSHEETS
+        
+        saveRDS(user_db,"data/sign_up_data.rds")
+        
+        #range_write("sheet_id",overwrite_user,range = range_to_write,col_names = F) #GSHEETS
         
         showModal(modalDialog(title = "",
           p("You have unsubscribed from the the DECIDE personalised newsletter"),
@@ -648,7 +659,11 @@ server <- function(input, output) {
     # ADDING USER TO DATABASE
     sign_up_success <- eventReactive(input$sign_up,{
         #load the user database
-        user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",col_types = c("cccccllcc")) #GSHEETS
+        #user_db <- range_read("sheet_id",col_types = c("cccccllcc")) #GSHEETS
+        
+        user_db <- readRDS("data/sign_up_data.rds")
+        
+        
         
         new_user <- data.frame(name = input$name,
                                email = input$email,
@@ -665,7 +680,11 @@ server <- function(input, output) {
         #check user is new
         if(!input$email %in% user_db$email){
             #add the user
-            sheet_append("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",new_user) #GSHEETS
+            #sheet_append("sheet_id",new_user) #GSHEETS
+            
+            user_db <- rbind(user_db,new_user)
+            saveRDS(user_db,"data/sign_up_data.rds")
+            print(user_db)
             
             print("New user successfully added, sending email...")
             
@@ -674,8 +693,12 @@ server <- function(input, output) {
             #work out where in the spreadsheet to edit
             user_id <- which(user_db$email == internal_user_data$email)
             
-            range_to_write <- paste0("A",user_id+1,":I",user_id+1) #GSHEETS
-            range_write("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",new_user,range = range_to_write,col_names = F) #GSHEETS
+            # range_to_write <- paste0("A",user_id+1,":I",user_id+1) #GSHEETS
+            # range_write("sheet_id",new_user,range = range_to_write,col_names = F) #GSHEETS
+            
+            user_db[user_id,] <- overwrite_user
+            saveRDS(user_db,"data/sign_up_data.rds")
+            print(user_db)
     
             #add the user but provide a message why
             print("Email already detected so editing user details, sending email...")
