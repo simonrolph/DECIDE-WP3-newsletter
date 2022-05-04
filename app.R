@@ -22,57 +22,32 @@ source("functions/get_records.R")
 
 # authentication set up (do once)
 if(F){
-    #google sheets
+    #google sheets #GSHEETS
     # designate project-specific cache
     options(gargle_oauth_cache = ".secrets")
     # check the value of the option, if you like
-    gargle::gargle_oauth_cache()
+    gargle::gargle_oauth_cache() 
     gs4_auth()
     list.files(".secrets/") 
-    
-    #Gmail
-    #create using the original create_smtp_creds function (don't work on the live app)
-    create_smtp_creds_key(
-        id = "gmail",
-        provider = "gmail",
-        user = "simonrolph.ukceh@gmail.com",
-        overwrite = T
-    )
 }
 
 
+# create credentials from environment variables
+#gmail (used for testing)
+# creds <- creds_envvar(user = "decidenewsletter@gmail.com",
+#                       pass_envvar = "gmail_password",
+#                       provider = "gmail",
+#                       use_ssl = T)
 
-#method 1
-#adjusted version that takes password from environment variables for the live app
-#source("functions/create_smtp_creds_key_with_password.R")
-# #create and unlock system keyring using keywing password from environment variables
-# keyring_create("system",password = Sys.getenv("keyring_password"))
-# keyring_unlock("system",Sys.getenv("keyring_password"))
-# 
-# create_smtp_creds_key_with_password(
-#     id = "gmail",
-#     provider = "gmail",
-#     user = "simonrolph.ukceh@gmail.com",
-#     password = Sys.getenv("gmail_password"),
-#     overwrite = TRUE
-# )
 
-#method 2
-#adjusted version that takes password from environment variables for the live app
-#source("functions/create_smtp_creds_key_with_password.R")
-# create_smtp_creds_file_with_password(
-#     file = ".secrets/gmail",
-#     provider = "gmail",
-#     user = "simonrolph.ukceh@gmail.com",
-#     password = Sys.getenv("gmail_password")
-# )
+# from a @ceh.ac.uk address - only works when on VPN
+# creds <- creds_envvar(user = "simrol@ceh.ac.uk",
+#                       pass_envvar = "outlook_password",
+#                       provider = "office365",
+#                       use_ssl = T)
 
-# method 3: best solution, create credentials from environment variables
-creds <- creds_envvar(user = "simonrolph.ukceh@gmail.com",
-                      pass_envvar = "gmail_password",
-                      provider = "gmail",
-                      use_ssl = T)
-
+#using the configured smtp connection on rsconnect
+creds <- creds_anonymous(host = "smtp.nerc-lancaster.ac.uk",port=25,use_ssl = T)
 
 # sheets reauth with specified token and email address (run each time when app is run)
 gs4_auth(
@@ -80,7 +55,7 @@ gs4_auth(
     email = "simonrolph.ukceh@gmail.com"
 )
 
-
+# --------------------------------------------------------------------------------- UI
 # Define UI for application
 ui <- fluidPage(
     shinyjs::useShinyjs(), # in order to disable inputs
@@ -94,7 +69,9 @@ ui <- fluidPage(
         id = "top_of_page",
         # Application title
         #img(src = "Decide_artwork_RGB.png",style="max-width: 500px;"),
-        titlePanel("Sign up to your personalised newsletter"),
+        titlePanel("Sign up to your personalised DECIDE newsletter"),
+        p("Personalised newsletters are an opportunity to receive insights into your recording. We use the records you have submitted online to iRecord, iSpot and/or iNaturalist, and the DECIDE recording priority, to highlight records you’ve made in high priority areas and make recommendations about where to visit next. These newsletters will be sent to you monthly by email."),
+        p("Please note that personalised newsletters are only available for butterfly records."),
         p("In order to send you personalised newsletters about your recording we need to know your email address, and your usernames on your biological recording websites. Please fill out the form below.")
     ),
     
@@ -221,7 +198,7 @@ ui <- fluidPage(
 
 
 
-
+#----------------------------------------------------------------------------------- Server
 # Define server logic 
 server <- function(input, output) {
     
@@ -264,22 +241,22 @@ server <- function(input, output) {
             
             #send email
             print("sending email")
-            sender <- "simonrolph.ukceh@gmail.com"
+            #sender <- "decidenewsletter@gmail.com"
+            #sender <- "simrol@ceh.ac.uk"
+            sender <- "decide@ceh.ac.uk"
             recipients <- c(input$email)
             disable("email")
             
             internal_user_data$email <<- input$email
             
             #send the email: I comment this out when testing and make verify_email_code() output the same code each time
-            # smtp_send(email_obj,
-            #           from = sender,
-            #           to = recipients,
-            #           subject = "DECIDE email verification code",
-            #           #credentials = creds_key("gmail")
-            #           #credentials = creds_file(".secrets/gmail")
-            #           credentials = creds,
-            #           verbose = T
-            # )
+            smtp_send(email_obj,
+                      from = sender,
+                      to = recipients,
+                      subject = "DECIDE email verification code",
+                      credentials = creds,
+                      verbose = T
+            )
             
         } else{
             hide("email_validation_code")
@@ -306,11 +283,12 @@ server <- function(input, output) {
             insertUI(
                 selector = "#submit_email_validation_code",
                 where = "afterEnd",
-                ui = div(paste0("Success! We have verfified your email: ",input$email," Please complete the rest of the form about your recording platforms below."),id="email_verification_success_message",class="alert alert-success",role="alert",)
+                ui = div(paste0("Success! We have verfified your email: ",input$email," Please complete the rest of the form about your recording platforms below."),id="email_verification_success_message",class="alert alert-success",role="alert")
             )
             
             #download the user database
-            user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",col_types = c("cccccllcc"))
+            user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",col_types = c("cccccllcc")) #GSHEETS
+            
             user_db <- as.data.frame(user_db)
             selected = c()
             
@@ -399,14 +377,14 @@ server <- function(input, output) {
                                subscribed_on = "",
                                unsubscribed_on = as.character(Sys.Date()))
         
-        user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",col_types = c("cccccllcc"))
+        user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",col_types = c("cccccllcc")) #GSHEETS
         user_id <- which(user_db$email == internal_user_data$email)
         
-        range_to_write <- paste0("A",user_id+1,":I",user_id+1)
+        range_to_write <- paste0("A",user_id+1,":I",user_id+1) #GSHEETS
         print(overwrite_user)
         print(range_to_write)
         
-        range_write("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",overwrite_user,range = range_to_write,col_names = F)
+        range_write("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",overwrite_user,range = range_to_write,col_names = F) #GSHEETS
         
         showModal(modalDialog(title = "",
           p("You have unsubscribed from the the DECIDE personalised newsletter"),
@@ -662,12 +640,7 @@ server <- function(input, output) {
     # ADDING USER TO DATABASE
     sign_up_success <- eventReactive(input$sign_up,{
         #load the user database
-        user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",col_types = c("cccccllcc"))
-        
-        
-        
-        
-        
+        user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",col_types = c("cccccllcc")) #GSHEETS
         
         new_user <- data.frame(name = input$name,
                                email = input$email,
@@ -684,15 +657,17 @@ server <- function(input, output) {
         #check user is new
         if(!input$email %in% user_db$email){
             #add the user
-            sheet_append("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",new_user)
+            sheet_append("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",new_user) #GSHEETS
+            
             print("New user successfully added, sending email...")
             
         #otherwise, if already in the database then update their details
         } else{
             #work out where in the spreadsheet to edit
             user_id <- which(user_db$email == internal_user_data$email)
-            range_to_write <- paste0("A",user_id+1,":I",user_id+1)
-            range_write("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",new_user,range = range_to_write,col_names = F)
+            
+            range_to_write <- paste0("A",user_id+1,":I",user_id+1) #GSHEETS
+            range_write("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",new_user,range = range_to_write,col_names = F) #GSHEETS
     
             #add the user but provide a message why
             print("Email already detected so editing user details, sending email...")
