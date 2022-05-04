@@ -15,9 +15,6 @@ library(markdown)
 source("functions/check_usernames.R")
 source("functions/get_data.R")
 
-source("functions/get_records.R")
-#devtools::source_url("https://github.com/NERC-CEH/UKCEH_shiny_theming/blob/main/theme_elements.R?raw=TRUE")
-
 #note secrets should be set up with environemnt variables: https://support.rstudio.com/hc/en-us/articles/228272368-Managing-your-content-in-RStudio-Connect
 
 # authentication set up (do once)
@@ -39,15 +36,26 @@ if(F){
 #                       provider = "gmail",
 #                       use_ssl = T)
 
+#if we're running locally
+if(grepl("simrol/Documents/R/DECIDE-WP3-newsletter",getwd())){
+    # from a @ceh.ac.uk address - only works when on VPN
+    creds <- creds_envvar(user = "simrol@ceh.ac.uk",
+                          pass_envvar = "outlook_password",
+                          provider = "office365",
+                          use_ssl = T)
+    
+    print("Running locally")
+    sender <- "simrol@ceh.ac.uk"
+    running_local <- T
+} else { # otehrwise assume we're on on Rstudio connect
+    #using the configured smtp connection on rsconnect
+    creds <- creds_anonymous(host = "smtp.nerc-lancaster.ac.uk",port=25,use_ssl = T)
+    
+    print("Running on rsconnect")
+    sender <- "decide@ceh.ac.uk"
+    running_local <- F
+}
 
-# from a @ceh.ac.uk address - only works when on VPN
-# creds <- creds_envvar(user = "simrol@ceh.ac.uk",
-#                       pass_envvar = "outlook_password",
-#                       provider = "office365",
-#                       use_ssl = T)
-
-#using the configured smtp connection on rsconnect
-creds <- creds_anonymous(host = "smtp.nerc-lancaster.ac.uk",port=25,use_ssl = T)
 
 # sheets reauth with specified token and email address (run each time when app is run)
 gs4_auth(
@@ -241,9 +249,10 @@ server <- function(input, output) {
             
             #send email
             print("sending email")
-            #sender <- "decidenewsletter@gmail.com"
-            #sender <- "simrol@ceh.ac.uk"
-            sender <- "decide@ceh.ac.uk"
+            
+            
+            
+            
             recipients <- c(input$email)
             disable("email")
             
@@ -605,7 +614,6 @@ server <- function(input, output) {
     #send a copy of the newsletter preview to the email address
     email_success <- eventReactive(input$send_preview, {
         print("Trying to send email")
-        sender <- "simonrolph.ukceh@gmail.com"
         recipients <- c(input$email)
         
         email_obj <- blastula:::cid_images(newsletter_file_location())
@@ -686,13 +694,12 @@ server <- function(input, output) {
         ))
         
         #send email confirmation
-        out_file_name <- paste0("../newsletters/previews/confirmation_",input$name,".html")
-        out <- render("newsletter_templates/sign_up_confirmation.Rmd",
+        out_file_name <- paste0("../email_renders/confirmation_",input$name,".html")
+        out <- render("email_templates/sign_up_confirmation.Rmd",
                       output_file = out_file_name,
                       params = markdown_params(),
         )
         
-        sender <- "simonrolph.ukceh@gmail.com"
         recipients <- c(input$email)
         
         email_obj <- blastula:::cid_images(out)
@@ -704,7 +711,7 @@ server <- function(input, output) {
                   credentials = creds
         )
         
-        
+        #optionally could then clear the email_renders folder (as to treat it as a temporary file location)
         
         print("New user successfully added, sent email.")
         

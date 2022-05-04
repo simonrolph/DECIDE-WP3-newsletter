@@ -1,8 +1,14 @@
 .Rprofile
 .Rhistory
 .Rproj.user/
-.secrets
+
 .Renviron
 
-rsconnect/
+
 data_story_development/2022-04-13_CT_data_story_development.html
+
+sign_up_app/.secrets
+sign_up_app/rsconnect/
+sign_up_app/renv/
+sign_up_app/sign_up_app.Rproj
+sign_up_app/.Rprofile
