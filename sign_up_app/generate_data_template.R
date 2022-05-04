@@ -6,6 +6,8 @@ df <- data.frame(
   irecord_username = "",
   ispot_username="",
   inat_username="",
+  home_lat = 0,
+  home_lon = 0,
   terms_and_conditions=F,
   subscribed = F,
   subscribed_on = Sys.Date(),

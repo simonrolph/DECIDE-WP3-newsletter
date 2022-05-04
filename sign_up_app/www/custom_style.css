@@ -18,3 +18,7 @@ img{
 .load_spinner {
   width: 20px !important;
 }
+
+#homerange {
+  max-width: 450px;
+}

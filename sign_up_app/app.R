@@ -11,6 +11,7 @@ library(shinyvalidate)
 library(shinyjs)
 library(googlesheets4)
 library(markdown)
+library(leaflet)
 
 source("functions/check_usernames.R")
 source("functions/get_data.R")
@@ -115,10 +116,18 @@ ui <- fluidPage(
         p("In order to generate the email newseltters we need your IDs on the recording platforms you use. Once you have entered your usernames you need to click on the 'Check usernames' button."),
         
         textInput("name","Name",placeholder = "What shall we call you in the email?"),
+        
+        
+        p(strong("Click on the map to add a circle which specifies your general area of interest")),
+        leafletOutput("homerange"),
+        br(),
+        
         checkboxGroupInput("record_platforms",
             "What platform(s) do you use for recording?",
             c("iRecord"="irecord","iSpot"="ispot","iNaturalist" = "inaturalist")
         ),
+        
+        
     
         #column for each platform (conditional on whether it's been selected in the record_platforms input)
         fluidRow(
@@ -153,11 +162,13 @@ ui <- fluidPage(
                 )
             )
         ),
-        br(),
+        
+
         
         #username checker
         actionButton("username_check","Check usernames"),
-        p(id="loadusernames","Checking usernames...",img(src = "images/DECIDE_load_small.gif",class="load_spinner"))
+        p(id="loadusernames","Checking usernames...",img(src = "images/DECIDE_load_small.gif",class="load_spinner")),
+        
         
     ),
     
@@ -214,11 +225,14 @@ ui <- fluidPage(
 # Define server logic 
 server <- function(input, output) {
     
+    
     internal_user_data <- list(name = NULL,
                                email = NULL,
                                irecord_username = "",
                                ispot_username = "",
-                               inat_username = "")
+                               inat_username = "",
+                               lat = 0,
+                               lon = 0)
     
     
     # STEP 1: 
@@ -234,7 +248,7 @@ server <- function(input, output) {
     verify_email_code <- eventReactive(input$verify_email,{
         code <- paste(round(runif(4)*8+1),collapse = "")
         code
-        #"1337"
+        "1337"
     })
     
     internal_user_data$email <- eventReactive(input$verify_email,{input$email})
@@ -263,13 +277,13 @@ server <- function(input, output) {
             internal_user_data$email <<- input$email
             
             #send the email: I comment this out when testing and make verify_email_code() output the same code each time
-            smtp_send(email_obj,
-                      from = sender,
-                      to = recipients,
-                      subject = "DECIDE email verification code",
-                      credentials = creds,
-                      verbose = T
-            )
+            # smtp_send(email_obj,
+            #           from = sender,
+            #           to = recipients,
+            #           subject = "DECIDE email verification code",
+            #           credentials = creds,
+            #           verbose = T
+            # )
             
         } else{
             hide("email_validation_code")
@@ -289,6 +303,7 @@ server <- function(input, output) {
             hide("email_validation_code")
             hide("submit_email_validation_code")
             hide("email_verification_error_message")
+            show("platform_questions")
             
             
             
@@ -337,12 +352,15 @@ server <- function(input, output) {
                 )
                 
                 #if the user is already signed up then update the inputs to be appropriate to this
+                print(user_db[user_id,])
                 
                 # fill in their information
                 updateTextInput(inputId = "name", value = user_db[user_id,"name"])
                 updateTextInput(inputId = "irecord_username", value = user_db[user_id,"irecord_username"])
                 updateTextInput(inputId = "ispot_username", value = user_db[user_id,"ispot_username"])
                 updateTextInput(inputId = "inat_username", value = user_db[user_id,"inat_username"])
+                
+                
                 
                 updateActionButton(inputId = "sign_up_initial",label = "Update subscription")
                 if(!is.na(user_db[user_id,"irecord_username"])){selected <- c(selected,"irecord")}
@@ -351,6 +369,21 @@ server <- function(input, output) {
             }
                 
             updateCheckboxGroupInput(inputId = "record_platforms", selected = selected)
+            
+            
+            #update the map
+            delay(1000,{
+                      leafletProxy('homerange') %>% # use the proxy to save computation
+                          addCircles(lng=user_db[user_id,"home_lon"], 
+                                     lat=user_db[user_id,"home_lat"], 
+                                     group='circles',weight=1, radius=25000, color='black', fillColor='blue',
+                                     fillOpacity=0.1, opacity=1)
+                      
+                      
+                      
+                 }
+                 )
+            
 
         #show information for the user
         } else {
@@ -364,7 +397,6 @@ server <- function(input, output) {
                 )
             }
         }
-        show("platform_questions")
     })
     
     observeEvent(input$un_sign_up_initial, {
@@ -388,6 +420,8 @@ server <- function(input, output) {
                                irecord_username = "",
                                ispot_username   = "",
                                inat_username    = "",
+                               home_lat = 0,
+                               home_lon = 0,
                                terms_and_conditions = NA,
                                subscribed = F,
                                subscribed_on = "",
@@ -403,6 +437,7 @@ server <- function(input, output) {
         
         
         saveRDS(user_db,"data/sign_up_data.rds")
+        print(user_db)
         
         #range_write("sheet_id",overwrite_user,range = range_to_write,col_names = F) #GSHEETS
         
@@ -492,6 +527,29 @@ server <- function(input, output) {
         ))
     })
     
+    
+    output$homerange <- renderLeaflet({
+        leaflet() %>%
+            setView(lat = 54.5, lng = -2, zoom = 5) %>%
+            addTiles()
+    })
+    
+    observeEvent(input$homerange_click, {
+        ## Get the click info like had been doing
+        click <- input$homerange_click
+        clat <- click$lat
+        clng <- click$lng
+        
+        internal_user_data$lat <<- click$lat
+        internal_user_data$lon <<- click$lng
+        
+        ## Add the circle to the map proxy
+        leafletProxy('homerange') %>% # use the proxy to save computation
+            clearShapes() %>%
+            addCircles(lng=clng, lat=clat, group='circles',
+                       weight=1, radius=25000, color='black', fillColor='blue',
+                       fillOpacity=0.1, opacity=1)
+    })
     
     
     
@@ -663,13 +721,13 @@ server <- function(input, output) {
         
         user_db <- readRDS("data/sign_up_data.rds")
         
-        
-        
         new_user <- data.frame(name = input$name,
                                email = input$email,
-                               irecord_username = input$irecord_username,
-                               ispot_username   = input$ispot_username,
-                               inat_username    = input$inat_username,
+                               irecord_username = if((nchar(input$irecord_username)!=0)){input$irecord_username}else{NA},
+                               ispot_username   = if((nchar(input$ispot_username)!=0)){input$ispot_username}else{NA},
+                               inat_username    = if((nchar(input$inat_username)!=0)){input$inat_username}else{NA},
+                               home_lat = internal_user_data$lat,
+                               home_lon = internal_user_data$lon,
                                terms_and_conditions = input$tsandcs,
                                subscribed = T,
                                subscribed_on = as.character(Sys.Date()),
@@ -696,7 +754,7 @@ server <- function(input, output) {
             # range_to_write <- paste0("A",user_id+1,":I",user_id+1) #GSHEETS
             # range_write("sheet_id",new_user,range = range_to_write,col_names = F) #GSHEETS
             
-            user_db[user_id,] <- overwrite_user
+            user_db[user_id,] <- new_user
             saveRDS(user_db,"data/sign_up_data.rds")
             print(user_db)
     
