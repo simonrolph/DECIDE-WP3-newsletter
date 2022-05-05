@@ -122,53 +122,59 @@ ui <- fluidPage(
         leafletOutput("homerange"),
         br(),
         
-        checkboxGroupInput("record_platforms",
-            "What platform(s) do you use for recording?",
-            c("iRecord"="irecord","iSpot"="ispot","iNaturalist" = "inaturalist")
-        ),
+        selectInput("online_or_not","Please select an option that indicates whether your record online or not",c("I record online","I don't record online"),selected = "I record online"),
         
         
-    
-        #column for each platform (conditional on whether it's been selected in the record_platforms input)
-        fluidRow(
-            conditionalPanel(
-                condition = "input.record_platforms.includes('irecord') == true",
-                column(
-                    width = 4,
-                    textInput("irecord_username","iRecord Indicia Warehouse User ID"),
-                    actionLink("irecord_help","How to find your Indicia Warehouse ID"),
-                    htmlOutput("irecord_status")
+        div(id="recording_online",
+        
+            checkboxGroupInput("record_platforms",
+                "What platform(s) do you use for recording?",
+                c("iRecord"="irecord","iSpot"="ispot","iNaturalist" = "inaturalist")
+            ),
+            
+            
+        
+            #column for each platform (conditional on whether it's been selected in the record_platforms input)
+            fluidRow(
+                conditionalPanel(
+                    condition = "input.record_platforms.includes('irecord') == true",
+                    column(
+                        width = 4,
+                        textInput("irecord_username","iRecord Indicia Warehouse User ID"),
+                        actionLink("irecord_help","How to find your Indicia Warehouse ID"),
+                        htmlOutput("irecord_status")
+                    )
+                ),
+                
+                conditionalPanel(
+                    condition = "input.record_platforms.includes('ispot') == true",
+                    column(
+                        width = 4,
+                        
+                        textInput("ispot_username","iSpot Username"),
+                        actionLink("ispot_help","How to find your iSpot username"),
+                        htmlOutput("ispot_status")
+                    )
+                ),
+            
+                conditionalPanel(
+                    condition = "input.record_platforms.includes('inaturalist') == true",
+                    column(
+                        width = 4,
+                        textInput("inat_username","iNaturalist Username"),
+                        actionLink("inat_help","How to find your iNaturalist username"),
+                        htmlOutput("inat_status")
+                    )
                 )
             ),
             
-            conditionalPanel(
-                condition = "input.record_platforms.includes('ispot') == true",
-                column(
-                    width = 4,
-                    
-                    textInput("ispot_username","iSpot Username"),
-                    actionLink("ispot_help","How to find your iSpot username"),
-                    htmlOutput("ispot_status")
-                )
-            ),
-        
-            conditionalPanel(
-                condition = "input.record_platforms.includes('inaturalist') == true",
-                column(
-                    width = 4,
-                    textInput("inat_username","iNaturalist Username"),
-                    actionLink("inat_help","How to find your iNaturalist username"),
-                    htmlOutput("inat_status")
-                )
+    
+            
+            #username checker
+            actionButton("username_check","Check usernames"),
+            p(id="loadusernames","Checking usernames...",img(src = "images/DECIDE_load_small.gif",class="load_spinner")),
+            
             )
-        ),
-        
-
-        
-        #username checker
-        actionButton("username_check","Check usernames"),
-        p(id="loadusernames","Checking usernames...",img(src = "images/DECIDE_load_small.gif",class="load_spinner")),
-        
         
     ),
     
@@ -248,7 +254,7 @@ server <- function(input, output) {
     verify_email_code <- eventReactive(input$verify_email,{
         code <- paste(round(runif(4)*8+1),collapse = "")
         code
-        "1337"
+        #"1337"
     })
     
     internal_user_data$email <- eventReactive(input$verify_email,{input$email})
@@ -277,13 +283,13 @@ server <- function(input, output) {
             internal_user_data$email <<- input$email
             
             #send the email: I comment this out when testing and make verify_email_code() output the same code each time
-            # smtp_send(email_obj,
-            #           from = sender,
-            #           to = recipients,
-            #           subject = "DECIDE email verification code",
-            #           credentials = creds,
-            #           verbose = T
-            # )
+            smtp_send(email_obj,
+                      from = sender,
+                      to = recipients,
+                      subject = "DECIDE email verification code",
+                      credentials = creds,
+                      verbose = T
+            )
             
         } else{
             hide("email_validation_code")
@@ -304,6 +310,7 @@ server <- function(input, output) {
             hide("submit_email_validation_code")
             hide("email_verification_error_message")
             show("platform_questions")
+            show("sign_up_questions")
             
             
             
@@ -360,29 +367,34 @@ server <- function(input, output) {
                 updateTextInput(inputId = "ispot_username", value = user_db[user_id,"ispot_username"])
                 updateTextInput(inputId = "inat_username", value = user_db[user_id,"inat_username"])
                 
-                
-                
                 updateActionButton(inputId = "sign_up_initial",label = "Update subscription")
                 if(!is.na(user_db[user_id,"irecord_username"])){selected <- c(selected,"irecord")}
                 if(!is.na(user_db[user_id,"ispot_username"])){selected <- c(selected,"ispot")}
                 if(!is.na(user_db[user_id,"inat_username"])){selected <- c(selected,"inaturalist")}
+                
+                print(length(selected))
+                
+                if(length(selected)==0) {
+                    updateSelectInput(inputId = "online_or_not",selected = "I don't record online")
+                }
+                
+                #update the map
+                delay(1000,{
+                    leafletProxy('homerange') %>% # use the proxy to save computation
+                        addCircles(lng=user_db[user_id,"home_lon"], 
+                                   lat=user_db[user_id,"home_lat"], 
+                                   group='circles',weight=1, radius=25000, color='black', fillColor='blue',
+                                   fillOpacity=0.1, opacity=1)
+                })
+                
+                internal_user_data$lat <<- user_db[user_id,"home_lat"]
+                internal_user_data$lon <<- user_db[user_id,"home_lon"]
             }
                 
             updateCheckboxGroupInput(inputId = "record_platforms", selected = selected)
             
             
-            #update the map
-            delay(1000,{
-                      leafletProxy('homerange') %>% # use the proxy to save computation
-                          addCircles(lng=user_db[user_id,"home_lon"], 
-                                     lat=user_db[user_id,"home_lat"], 
-                                     group='circles',weight=1, radius=25000, color='black', fillColor='blue',
-                                     fillOpacity=0.1, opacity=1)
-                      
-                      
-                      
-                 }
-                 )
+            
             
 
         #show information for the user
@@ -417,6 +429,7 @@ server <- function(input, output) {
         
         overwrite_user <- data.frame(name = "",
                                email = paste0("zzz",internal_user_data$email),
+                               record_online = F,
                                irecord_username = "",
                                ispot_username   = "",
                                inat_username    = "",
@@ -486,7 +499,7 @@ server <- function(input, output) {
         
         #could show sign up questions at an earlier stage?
         if (TRUE %in% statuses){
-            show("sign_up_questions")
+            
         }
         
         internal_user_data$name <<- input$name
@@ -552,6 +565,26 @@ server <- function(input, output) {
     })
     
     
+    observeEvent(input$online_or_not,{
+        
+        if(input$online_or_not == "I don't record online"){ # hide 
+            hide("recording_online")
+            updateTextInput(inputId = "irecord_username", value = "")
+            updateTextInput(inputId = "ispot_username", value = "")
+            updateTextInput(inputId = "inat_username", value = "")
+            
+            internal_user_data$irecord_username <<- ""
+            internal_user_data$ispot_username <<- ""
+            internal_user_data$inat_username <<- ""
+            
+            updateCheckboxGroupInput(inputId = "record_platforms", selected = "")
+        } else {
+            show("recording_online")
+        }
+        
+    })
+    
+    
     
     # STEP 3: SIGNING UP
     # signing up
@@ -564,51 +597,64 @@ server <- function(input, output) {
         ))
     })
     
+    
     hide("send_preview")
     hide("loadmessage")
+    
+    
     observeEvent(input$sign_up_initial, {
         removeUI(selector = "#sign-up-warning")
-        print(length(input$record_platforms))
-        print(unlist(username_status()))
         
-        if (length(input$record_platforms)>0 & 
-            length(input$record_platforms) == sum(unlist(username_status())) &
-            input$irecord_username == internal_user_data$irecord_username &
-            input$ispot_username == internal_user_data$ispot_username &
-            input$inat_username == internal_user_data$inat_username){
-            
-            if(input$tsandcs){
-                showModal(modalDialog(
-                    title = "Sign-up confirmation",
-                    strong("Name:"),
-                    p(input$name),
-                    strong("Email:"),
-                    p(input$email),
-                    strong("Your record on these platforms:"),
-                    p(ifelse("irecord" %in% input$record_platforms,
-                             paste("iRecord - Username:",input$irecord_username),
-                             "")),
-                    p(ifelse("ispot" %in% input$record_platforms,
-                             paste("iSpot - Username:",input$ispot_username),
-                             "")),
-                    p(ifelse("inaturalist" %in% input$record_platforms,
-                             paste("iNaturalist - Username:",input$inat_username),
-                             "")),
-                    easyClose = TRUE,
-                    footer = tagList(
-                        modalButton("Back"),
-                        actionButton("sign_up", "Confirm",class="btn btn-success")
-                    )
-                ))
-            } else {
-                insertUI(
-                    selector = "#sign_up_initial",
-                    ui = div(id = "sign-up-warning",
-                             paste0("You must agree to the terms and conditions to sign up to the personalised newsletter"),class="alert alert-warning",role="danger"),
-                    where = "afterEnd"
+        
+        if(input$tsandcs == FALSE){ #if ts and cs arn't agreed to
+            insertUI(
+                selector = "#sign_up_initial",
+                ui = div(id = "sign-up-warning",
+                         paste0("You must agree to the terms and conditions to sign up to the personalised newsletter"),class="alert alert-warning",role="danger"),
+                where = "afterEnd"
+            )
+        } else if (input$name == ""){ #no name
+            insertUI(
+                selector = "#sign_up_initial",
+                ui = div(id = "sign-up-warning",
+                         paste0("Please enter your name"),class="alert alert-warning",role="danger"),
+                where = "afterEnd"
+            )
+
+        } else if (internal_user_data$lat==0){ #no map point added
+            insertUI(
+                selector = "#sign_up_initial",
+                ui = div(id = "sign-up-warning",
+                         paste0("Please select somewhere on the map to be your general area of interest"),class="alert alert-warning",role="danger"),
+                     where = "afterEnd"
                 )
-            }
-        } else{
+            
+        } else if (input$online_or_not == "I don't record online"){ #if they don't record online
+            showModal(modalDialog(
+                title = "Sign-up confirmation",
+                strong("Name:"),
+                p(input$name),
+                strong("Email:"),
+                p(input$email),
+                strong("You don't record online"),
+                easyClose = TRUE,
+                footer = tagList(
+                    modalButton("Back"),
+                    actionButton("sign_up", "Confirm",class="btn btn-success")
+                )
+            ))
+            
+        } else if (all(c(input$irecord_username,input$ispot_username,input$inat_username)=="")) {
+            insertUI(
+                selector = "#sign_up_initial",
+                ui = div(id = "sign-up-warning",
+                         paste0("If you have indicated that you record online then you must provide a username for an online recording platform"),class="alert alert-warning",role="danger"),
+                where = "afterEnd"
+            )
+            
+        } else if (input$irecord_username != internal_user_data$irecord_username |
+                   input$ispot_username != internal_user_data$ispot_username |
+                   input$inat_username != internal_user_data$inat_username) {
             
             insertUI(
                 selector = "#sign_up_initial",
@@ -616,7 +662,39 @@ server <- function(input, output) {
                          paste0("Please re-check your recording usernames before you sign-up to the mailing list"),class="alert alert-warning",role="danger"),
                 where = "afterEnd"
             )
+            
+        } else if (length(input$record_platforms) != sum(unlist(username_status()))){
+            insertUI(
+                selector = "#sign_up_initial",
+                ui = div(id = "sign-up-warning",
+                         paste0("Please re-check your recording usernames before you sign-up to the mailing list"),class="alert alert-warning",role="danger"),
+                where = "afterEnd"
+            )
+        } else {
+            showModal(modalDialog(
+                title = "Sign-up confirmation",
+                strong("Name:"),
+                p(input$name),
+                strong("Email:"),
+                p(input$email),
+                strong("Your record on these platforms:"),
+                p(ifelse("irecord" %in% input$record_platforms,
+                         paste("iRecord - Username:",input$irecord_username),
+                         "")),
+                p(ifelse("ispot" %in% input$record_platforms,
+                         paste("iSpot - Username:",input$ispot_username),
+                         "")),
+                p(ifelse("inaturalist" %in% input$record_platforms,
+                         paste("iNaturalist - Username:",input$inat_username),
+                         "")),
+                easyClose = TRUE,
+                footer = tagList(
+                    modalButton("Back"),
+                    actionButton("sign_up", "Confirm",class="btn btn-success")
+                )
+            ))
         }
+            
     })
     
     
@@ -723,6 +801,7 @@ server <- function(input, output) {
         
         new_user <- data.frame(name = input$name,
                                email = input$email,
+                               record_online = input$online_or_not=="I record online",
                                irecord_username = if((nchar(input$irecord_username)!=0)){input$irecord_username}else{NA},
                                ispot_username   = if((nchar(input$ispot_username)!=0)){input$ispot_username}else{NA},
                                inat_username    = if((nchar(input$inat_username)!=0)){input$inat_username}else{NA},

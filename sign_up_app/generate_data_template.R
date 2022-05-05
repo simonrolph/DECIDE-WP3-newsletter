@@ -1,11 +1,12 @@
 
 #create a data frame
 df <- data.frame(
-  name = "",
-  email = "",
-  irecord_username = "",
-  ispot_username="",
-  inat_username="",
+  name = "zzzzzzz",
+  email = "zzzzzzzzz",
+  record_online = F,
+  irecord_username = "zzzzzzzzz",
+  ispot_username="zzzzzzzzz",
+  inat_username="zzzzzzzzz",
   home_lat = 0,
   home_lon = 0,
   terms_and_conditions=F,
@@ -14,8 +15,7 @@ df <- data.frame(
   unsubscribed_on = Sys.Date()
 )
 
-#remove a row
-df <- df[-1,]
+
 
 #save file
 saveRDS(df,file = "data/sign_up_data.rds")
