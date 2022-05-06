@@ -83,9 +83,10 @@ ui <- fluidPage(
         # Application title
         #img(src = "Decide_artwork_RGB.png",style="max-width: 500px;"),
         titlePanel("Sign up to your personalised DECIDE newsletter"),
-        p("Personalised newsletters are an opportunity to receive insights into your recording. We use the records you have submitted online to iRecord, iSpot and/or iNaturalist, and the DECIDE recording priority, to highlight records you’ve made in high priority areas and make recommendations about where to visit next. These newsletters will be sent to you monthly by email."),
-        p("Please note that personalised newsletters are only available for butterfly records."),
-        p("In order to send you personalised newsletters about your recording we need to know your email address, and your usernames on your biological recording websites. Please fill out the form below.")
+        p("Personalised newsletters are an opportunity for you to receive insights into your recent recording. We use the butterfly records you have submitted online to iRecord, iSpot and/or iNaturalist in conjunction with recording priorities shown on the DECIDE Tool, to provide a summary of your recent activity, how it fits in with where other people are recording and make suggestions for places to visit next. These newsletters will be sent to you monthly by email."),
+        p("Please note that personalized newsletters are only available for butterfly records."),
+        p("In order to send you information about your records, we need to know your email address and your usernames on the biological recording platforms you use. Please complete the form below."),
+        p("If you don’t submit butterfly records via online recording platforms, you can still sign up but the information you receive in the newsletters will relate to general butterfly recording activity in your chosen area.")
     ),
     
     div(id = "identity_questions",
@@ -128,7 +129,7 @@ ui <- fluidPage(
         div(id="recording_online",
         
             checkboxGroupInput("record_platforms",
-                "What platform(s) do you use for recording?",
+                "What platform(s) do you use for recording? If you record on multiple platforms you will be sent one email newsletter that combines records from multiple platforms.",
                 c("iRecord"="irecord","iSpot"="ispot","iNaturalist" = "inaturalist")
             ),
             
@@ -254,14 +255,17 @@ server <- function(input, output) {
     verify_email_code <- eventReactive(input$verify_email,{
         code <- paste(round(runif(4)*8+1),collapse = "")
         code
-        #"1337"
+        "1337"
     })
     
-    internal_user_data$email <- eventReactive(input$verify_email,{input$email})
+    internal_user_data$email <- eventReactive(input$verify_email,{tolower(input$email)})
     
     #generates and sends code via email
     observeEvent(input$verify_email,{
         if(iv$is_valid()) {
+            updateTextInput(inputId = "email",value = tolower(input$email))
+            
+            
             show("email_validation_code")
             show("submit_email_validation_code")
             
@@ -280,16 +284,16 @@ server <- function(input, output) {
             recipients <- c(input$email)
             disable("email")
             
-            internal_user_data$email <<- input$email
+            internal_user_data$email <<- tolower(input$email)
             
             #send the email: I comment this out when testing and make verify_email_code() output the same code each time
-            smtp_send(email_obj,
-                      from = sender,
-                      to = recipients,
-                      subject = "DECIDE email verification code",
-                      credentials = creds,
-                      verbose = T
-            )
+            # smtp_send(email_obj,
+            #           from = sender,
+            #           to = recipients,
+            #           subject = "DECIDE email verification code",
+            #           credentials = creds,
+            #           verbose = T
+            # )
             
         } else{
             hide("email_validation_code")
@@ -844,11 +848,8 @@ server <- function(input, output) {
         removeModal()
         #show success modal with onward links
         showModal(modalDialog(title = "Success!",
-                              p("You have successfully signed up to the DECIDE personalised newsletter."),
-                              p("You will receive confirmation via email"),
-                              p("Share this page"),
-                              p("Go to DECIDE app and start planning your next recording visit"),
-                              p("Sign up to mailing list"),
+                              p("You have successfully signed up to the DECIDE personalised newsletter. You will receive confirmation via email."),
+                              a(href="https://decide.ceh.ac.uk","Visit the DECIDE tool to plan your next visit"),
                               easyClose = F
                               
         ))

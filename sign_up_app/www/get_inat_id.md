@@ -1,4 +1,4 @@
- 1. Your iNatrualist username is the username that you use to log in to iNaturalist:
+ 1. Your iNaturalist username is the username that you use to log in to iNaturalist. First navigate to the iNaturalist website <a href='https://www.inaturalist.org/' target='_blank'> inaturalist.org</a>:
  
  ![IMG](images/inat_help_1.png)
  

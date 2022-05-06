@@ -1,4 +1,4 @@
- 1. Navigate to the iRecord website: [https://irecord.org.uk/](https://irecord.org.uk/)
+ 1. Navigate to the iRecord website: <a href='https://irecord.org.uk/' target='_blank'> irecord.org.uk </a>
  2. Log in with your iRecord log in and Password:
  
  ![IMG](images/irecord_help_1.png)
