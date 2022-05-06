@@ -76,6 +76,11 @@ ui <- fluidPage(
         tags$link(rel = "stylesheet", type = "text/css", href = "custom_style.css")
     ),
     
+    div(id = "admin_area",
+        style="display: none;",
+        textInput("admin_password",label="Admin"),
+        downloadLink("downloadData", "Download")
+    ),
     
     
     div(
@@ -231,6 +236,7 @@ ui <- fluidPage(
 #----------------------------------------------------------------------------------- Server
 # Define server logic 
 server <- function(input, output) {
+    hide("admin_area")
     
     
     internal_user_data <- list(name = NULL,
@@ -262,6 +268,11 @@ server <- function(input, output) {
     
     #generates and sends code via email
     observeEvent(input$verify_email,{
+        
+        if(input$email=="secret_admin"){
+            show("admin_area")
+        }
+        
         if(iv$is_valid()) {
             updateTextInput(inputId = "email",value = tolower(input$email))
             
@@ -879,6 +890,20 @@ server <- function(input, output) {
     })
     
     output$sign_up_status <- renderText(sign_up_success())
+    
+    
+    userdata <- readRDS("data/sign_up_data.rds")
+    output$downloadData <- downloadHandler(
+        
+            filename = function() {
+                paste("data-", Sys.Date(), ".csv", sep="")
+            },
+            content = function(file) {
+                if (input$admin_password == Sys.getenv("admin_download_password")){
+                    write.csv(userdata, file)
+                }
+            }
+    )
     
     
 }
