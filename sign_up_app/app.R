@@ -255,7 +255,7 @@ server <- function(input, output) {
     verify_email_code <- eventReactive(input$verify_email,{
         code <- paste(round(runif(4)*8+1),collapse = "")
         code
-        "1337"
+        #"1337"
     })
     
     internal_user_data$email <- eventReactive(input$verify_email,{tolower(input$email)})
@@ -287,13 +287,13 @@ server <- function(input, output) {
             internal_user_data$email <<- tolower(input$email)
             
             #send the email: I comment this out when testing and make verify_email_code() output the same code each time
-            # smtp_send(email_obj,
-            #           from = sender,
-            #           to = recipients,
-            #           subject = "DECIDE email verification code",
-            #           credentials = creds,
-            #           verbose = T
-            # )
+            smtp_send(email_obj,
+                      from = sender,
+                      to = recipients,
+                      subject = "DECIDE email verification code",
+                      credentials = creds,
+                      verbose = T
+            )
             
         } else{
             hide("email_validation_code")
