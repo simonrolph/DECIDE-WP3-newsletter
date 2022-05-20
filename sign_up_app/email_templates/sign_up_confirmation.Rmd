@@ -2,38 +2,46 @@
 title: "Welcome to the DECIDE newsletter"
 output: blastula::blastula_email
 params:
-  name: NULL
-  email: NULL
+  name: NA
+  email: NA
+  record_online: NA
   irecord_username: NA
   ispot_username: NA
   inat_username: NA
   ispot_key: NA
   irecord_key: NA
-  data_stories: "all"
-  randomise: FALSE
   start_date: NA
   end_date: NA
 ---
 
+![](../www/images/Decide_artwork_RGB.png)
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,error=T)
 ```
 
 ## Hello `r params$name`!
 
-Thank you for signing up to the DECIDE monthly personalised newsletter. We hope you enjoy the newsletters.
+Thank you for signing up to receive the MyDECIDE monthly personalised newsletter.
 
-## Your details
+### Your details
 
-This is what we know about you: 
+This is the information you have provided to us:
 
 Your email is `r params$email`
 
-Your iRecord username is `r params$irecord_username`
+`r if(params$record_online){"You record online."}else{"You don't record online."}`
 
-Your iSpot username is `r params$ispot_username`
+ `r if(!is.na(params$irecord_username)){paste("Your iRecord username is <code>",params$irecord_username,"</code>.")}`
+ 
+`r if(!is.na(params$ispot_username)){paste("Your iSpot username is <code>",params$ispot_username,"</code>.")}`
+  
+`r if(!is.na(params$inat_username)){paste("Your iNaturalist username is <code>",params$inat_username,"</code>.")}`
 
-Your iNaturalist username is `r params$inat_username`
+You can amend your details or unsubscribe from MyDECIDE at any point [here](https://decide.ceh.ac.uk/app/newsletter).
+
+<br>
 
 Happy recording!
-The DECIDE team
+
+<i>The DECIDE Team</i>
