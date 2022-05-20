@@ -341,25 +341,34 @@ data <- fromJSON(rawToChar(res$content))
 photo_url <- data$results$default_photo$medium_url
 photo_attribution <- data$results$default_photo$attribution
 
+
+n_records_of_featured_sp <- community_data_this_month %>% 
+  filter(scientific_name == top_visit$scientific_name) %>%
+  nrow()
+
   
 # VISUALISE
 
 if(personalised){
   p(
-    "In ",
-     month_name_got_personal_records_from,
-     ", the place you visited with the highest DECIDE recording priority was ",
-     place_name,
-     " where you recorded ",
+    "On ",
+     format(top_visit$observed_on,"%d/%m/%Y"),
+    "you visited ",
+    place_name,
+    "and it was your highest DECIDE recording priority visit this month. On this visit you recorded",
      top_visit$n_species,
-     " species. One of these species was ",
-     common_name(top_visit$scientific_name),
-     " (",
-     em(top_visit$scientific_name),
-     ")."
+     " species. Our pick from these species is",
+     paste0(common_name(top_visit$scientific_name),"."),
+     #" (",
+     #em(top_visit$scientific_name),
+     #")",
+     " In total, ",
+    n_records_of_featured_sp,
+    " records of this species were made this month by online recorders such as yourself."
     ) %>% print() #if a p() function (or equivalent) is in an if statement you need to print it using print()
 } else {
-  p("A visit last month to the highest recording priority area was a visit to ",place_name,"  and recorded ",top_visit$n_species," species. One of the species recorded was",em(paste0(top_visit$scientific_name,"."))) %>% print()
+  
+  p("A visit last month to the highest recording priority area was a visit to ",place_name,"  and recorded ",top_visit$n_species," species. Our pick from these species is",em(paste0(top_visit$scientific_name,"."))) %>% print()
 }
 
 
@@ -393,18 +402,15 @@ ds1_map_plot <- OpenStreetMap::autoplot.OpenStreetMap(ds1_map)+
 butterfly_image <- ggdraw() + draw_image(photo_url, scale = 0.9)
 
 img(src=photo_url,class="circleimage") %>% print()
-p(em("Photo ",photo_attribution),style="font-size:10px;")
+p(em("Photo ",photo_attribution),style="font-size:10px;text-align:center;")
 
 #use {patchwork} to put it together side by side
 #butterfly_image+ds1_map_plot
 
 ds1_map_plot
 
-
-
-
 #lead text before button
-p("The DECIDE recoder tool updates in response to records in high priority areas like this. See the impact of your record...")
+p(paste0("The recording priority maps in the DECIDE recorder tool responds to visits to high priority areas such as your visit to ",place_name,". Check out the impact of your record on the DECIDE Recorder Tool."))
 
 #vsit tool button
 div(class="center",
@@ -446,6 +452,7 @@ if (personalised){
 
 #arbitrary threshold then group by location
 high_priority_records <- ds2_data  %>% 
+  st_transform(crs = 4326) %>%
   group_by(grid_square,recording_priority) %>% 
   summarise(n=n(),
             n_species = length(unique(scientific_name)),
@@ -453,6 +460,8 @@ high_priority_records <- ds2_data  %>%
             longitude = mean(longitude)) %>%
   arrange(-recording_priority) %>%
   head(5)
+
+st_crs(high_priority_records) <- 4326
 
 #how many species in total were recorded at these high priority locations?
 n_species <- ds2_data %>% filter(recording_priority >=min(high_priority_records$recording_priority)) %>% pull(scientific_name) %>% unique() %>% length()
@@ -492,11 +501,14 @@ if(personalised){
   ds2_map <- ggplot() +
     # loads background map tiles from a tile source
     annotation_map_tile(type = "cartolight", zoomin = -1,progress="none")+
-    layer_spatial(high_priority_records,mapping = aes(size = n), shape = 15, alpha = 0.5, col = "#e65c00" )+ 
-    #layer_spatial(high_priority_records,size = 3, alpha = 0.3)+ 
+    layer_spatial(high_priority_records, alpha = 0.5, col = "#e65c00",size = 3,shape=16)+ 
     fixed_plot_aspect() + #make the plot square
-    #labs(size="Number Of Records at a location")+ 
-    #stat_spatial_identity(aes(high_priority_records$latitude, high_priority_records$longitude, label = high_priority_records$n), geom = "label_repel") +
+    geom_spatial_label_repel(high_priority_records,
+                             mapping = aes(high_priority_records$longitude,
+                                           high_priority_records$latitude, 
+                                           label = paste0(high_priority_records$n_species, " species")),
+                             min.segment.length = 0,
+                             force = 3) +
     theme(axis.text.x=element_blank(), #remove x axis labels
         axis.ticks.x=element_blank(), #remove x axis ticks
         axis.text.y=element_blank(),  #remove y axis labels
@@ -504,8 +516,8 @@ if(personalised){
         legend.position = "none",
         panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
-        plot.caption = element_text(color = "#767675", face = "italic"))+ 
-    labs(caption = "Square size indicates the number of records in a location")
+        plot.caption = element_text(color = "#767675", face = "italic"))+
+    labs(x = "",y = "")
   
   cat("<div class='dataStoryImage'>") # this isa way we can apply css to images that are plotted by putting them in the
   print(ds2_map)
@@ -712,7 +724,18 @@ hr() #line across
 
 ```
 
-This newsletter was generated on `r Sys.time()`
 
-Don\'t want to receive these emails any more? <a>Unsubscribe from the DECIDE personalised newsletter</a>
+
+### Want to know more?
+
+ - [What and how to record](https://decide.ceh.ac.uk/info/faq_recording)
+ - [More about the maps and models](https://decide.ceh.ac.uk/info/faq_maps_models)
+ - [The DECIDE blog](https://decide.ceh.ac.uk/app/blogs)
+ - [About the DECIDE team](https://decide.ceh.ac.uk/info/about)
+
+
+
+Amend your MyDECIDE personal recording details or unsubscribe from MyDECIDE. <a href="https://decide.ceh.ac.uk/app/newsletter">Visit the MyDECIDE sign-up page</a>
+
+This newsletter was generated on `r Sys.time()`
 
