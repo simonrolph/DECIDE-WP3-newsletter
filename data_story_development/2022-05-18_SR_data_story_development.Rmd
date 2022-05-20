@@ -1,0 +1,718 @@
+---
+title: "Your Personalised Newsletter"
+output: blastula::blastula_email
+params:
+    user: "Keywood, B. Ben"
+    month_featured: 8
+    year_featured: 2019
+    personalised: TRUE
+---
+
+```{r setup, include=FALSE}
+# this is an rmarkdown document for prototyping the newsletter data stories
+
+knitr::opts_chunk$set(echo = F,warning = F,message = FALSE, fig.align = 'center') # one could add this for aligning all images to the centre
+
+#if running interactively you need to set working directory
+#setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+#setwd("~/R/DECIDE-WP3-newsletter/data_story_development")
+```
+
+```{r, include = F}
+#load packages
+
+library(dplyr) #data manipulation
+library(ggplot2) #plotting
+library(sf) #spatial processing
+library(ggspatial) # for plotting static maps
+library(spData)
+library(OpenStreetMap)
+
+library(nominatimlite) # for getting place names
+
+library(htmltools) #for functions like HTML(), h3(), p() etc.
+library(blastula) # for the blastula::blastula_email format defined in the yaml - at least need to have it installed if not actually loaded
+
+#for api requests:
+library(jsonlite)
+library(httr)
+library(geojsonsf)
+library(patchwork)
+
+library(png)
+library(cowplot)
+library(magick)
+
+#tom's package - might come in handy - not currently used
+#devtools::install_github('biologicalrecordscentre/recorderMetrics')
+
+#ecological traits
+library(readr)
+ecological_traits <- read_csv("~/R/DECIDE-WP3-newsletter/data/ecological_traits.csv", 
+    skip = 1)
+
+sp_rarity <- ecological_traits %>% select(scientific_name,n_squares = `gb_10_km_squares_(2000-2016)`)
+
+#function to return common name
+common_name <- function(sci_name){
+  ecological_traits$common_name[ecological_traits$scientific_name == sci_name]
+}
+
+#doesn't seem to work specifying a custom css file so just put any css in here:
+```
+
+
+
+
+```{css, echo=FALSE}
+/* circle photo*/
+.circleimage{
+  width:300px;
+  height:300px;
+  object-fit:cover;
+  border-radius:50%;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+body{
+  font-family: Helvetica;
+  font-size: 14pt;
+}
+
+/*
+.dataStoryImage{
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 80%;
+}
+*/
+  
+  
+.button {
+  background-color: #F08444; /* Green */
+  border: none;
+  color: white;
+  padding: 12px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  cursor: pointer;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+}
+
+hr {
+  background: linear-gradient(to right, #FCE15D, #35AA44);
+  height: 10px;
+  border-radius: 5px;
+  border: 0px
+}
+
+.center {
+  margin: auto;
+  width: 100%;
+  text-align: center;
+}
+
+```
+
+
+
+```{r load_data, include = F}
+#DATA PREPARATION
+
+#load in the sample data downloaded from inaturalist and processed in this file: https://github.com/BiologicalRecordsCentre/DECIDE-dynamic-dataflow/blob/cfdc8d4315a65762e326122e72e0a98b1bb4dadc/prototypes/generate_test_data_set_for_newsletters.R
+records_data <- readRDS("sample_data_for_newsletters.rds")
+
+#get grid square (as a proxy for 'site')
+#these aren't the proper SK435934 grid references but they have unique values for each 100x100m grid square
+round_to_centre_of_grid <- function(x){ round(x-49.99,-2)+50}
+records_data$grid_square <- paste0(round_to_centre_of_grid(records_data$easting),
+                                  round_to_centre_of_grid(records_data$northing))
+
+
+#select only relevant columns
+records_data <- records_data %>% select(
+  scientific_name = species,
+  latitude = decimalLatitude,
+  longitude = decimalLongitude,
+  easting,
+  northing,
+  grid_square,
+  observed_by = recordedBy,
+  observed_on = eventDate,
+  day,
+  month,
+  year,
+  url = occurrenceID,
+  recording_priority
+)
+
+#show column names
+names(records_data)
+```
+
+```{r filters, include = F}
+
+#filtering parameters
+username <- params$user
+month_featured <- params$month_featured
+year_featured <- params$year_featured
+personalised <- params$personalised
+
+```
+
+```{r produce_dataframes, include = F}
+#generate data frames that we can use later on
+if(personalised){
+  individual_data <- records_data %>% 
+    filter(observed_by == username,year == year_featured) %>% 
+    mutate(target_user = T) #just the user
+  community_data <- records_data %>% 
+    filter(observed_by != username,year == year_featured) %>% 
+    mutate(target_user = F)# everyone else
+  combined_data <- bind_rows(individual_data,community_data)
+  
+  #filter data by that month/year
+  individual_data_this_month <- individual_data %>% filter(month == month_featured,year == year_featured)
+  
+  #go back until we get records
+  records_made_this_month <- T
+  months_to_go_back <- 0
+  
+  if(nrow(individual_data_this_month) == 0 & (month_featured-months_to_go_back)>0){
+    records_made_this_month <- F
+    months_to_go_back <- months_to_go_back +1
+    individual_data_this_month <- individual_data %>% filter(month == month_featured-months_to_go_back,year == year_featured)
+  }
+  
+  month_name_got_personal_records_from <- month.name[month_featured-months_to_go_back]
+  
+} else {
+  combined_data <- community_data <- records_data %>%     
+    filter(year == year_featured)%>% 
+    mutate(target_user = F)
+}
+
+#everone else's data for last month (even if we've got records from further back)
+community_data_this_month <- community_data %>% filter(month == month_featured,year == year_featured)
+
+#combined both people the target user and 
+combined_data_this_month <- combined_data %>% filter(month == month_featured,year == year_featured)
+
+#define month_name to be used in the text
+month_name <- month.name[month_featured]
+
+
+
+#exploratory code (for finding a user with records)
+# if(F){
+#   #show usernames of people who record a lot
+#   records_data %>% st_drop_geometry() %>% group_by(observed_by) %>% summarise(n = n()) %>% arrange(-n)
+#   
+#   #explore a persons records:
+#   #how many per year
+#   individual_data %>% group_by(year) %>% summarise(n = n())
+#   
+#   #just plot points on a x / y
+#   ggplot(individual_data ,aes(x = longitude,y = latitude))+
+#     geom_point()
+#   
+#   #Stuff to do with filtering the sample data set to only show records a single month
+#   #see how many records per month
+#   individual_data %>% group_by(month,year) %>% summarise(n = n()) %>% arrange(-year,-month)
+# }
+
+
+
+# So now we've got 6 data frames to use (lots of redundancy..)
+#individual_data: Just the target user's data for the target year
+#community_data: EVeryone else's data for the target year
+#combined_data: both the individual's data(target_user=T) and everyone else's (target_user=F)
+#individual_data_this_month: as above but only the target_month - this may be from prior months
+#community_data_this_month: as above but only the target_month
+#combined_data_this_month: as above but only the target_month
+
+
+
+#We also have:
+#month_name: the name of last month
+#month_name_got_personal_records_from: the month name that the target user last recorded in
+
+
+### ACTUAL NEWSLETTER CONTENT STARTS BELOW
+```
+
+
+
+
+
+
+
+
+![](images/mydecide_logo.png)
+
+```{r wel, echo  = F, results='asis'}
+#switched text whether or not the newsletter is personalised
+
+
+if(personalised){
+   tags$h1("Your personalised newsletter") %>% print()
+   p("Welcome to your personalised newsletter for ", strong(month_name), ". Here are insights and inspirations based on your recording from last month.") %>% print()
+  
+} else {
+  tags$h1("Your newsletter") %>% print()
+  p("Welcome to your  newsletter for ", strong(month_name), ". Here are insights based on recording from DECIDErs over the last month and further inspirations.") %>% print()
+}
+
+
+
+hr() #line across
+
+```
+
+
+
+
+
+
+
+
+
+
+
+### A great find!
+
+```{r ds1, echo  = F, results='asis',fig.height = 3}
+#DATA STORY 1
+
+# PROCESS
+
+#what was their top visit in terms of recording priority?
+if (personalised){
+  ds1_data <- individual_data_this_month
+} else {
+  ds1_data <- community_data_this_month
+}
+
+#get the top visit for the month
+top_visit <- ds1_data %>% 
+  filter(recording_priority == max(ds1_data$recording_priority)) %>%
+  left_join(sp_rarity) %>%
+  group_by(grid_square,observed_on) %>% #group by 'visit'
+  arrange(n_squares) %>%
+  summarise(recording_priority = mean(recording_priority), #get the decide score for that visit
+            n_species = length(unique(scientific_name)), #number of species in that visit
+            scientific_name = first(scientific_name), #get a species name
+            latitude = first(latitude),
+            longitude = first(longitude)) %>% 
+  arrange(desc(recording_priority)) %>% #order by decide score
+  head(1)
+
+
+
+
+  
+
+
+#get some sort of place name
+place_name <- reverse_geo_lite(lat = top_visit$latitude,lon = top_visit$longitude,full_results = T)
+
+if(!is.null(place_name$suburb) & !is.null(place_name$city) ){ #try and get suburb+city
+  place_name <- paste0(place_name$suburb,", ",place_name$city)
+} else if (!is.null(place_name$county)) { #if that fails then get the county
+  place_name <- place_name$county
+} else { #if all else fails use the full address
+  place_name <- place_name$address
+}
+
+#get image
+res <- GET("https://api.inaturalist.org/v1/taxa",
+            query = list(
+              q = top_visit$scientific_name,
+              per_page = 1
+            ))
+data <- fromJSON(rawToChar(res$content))
+photo_url <- data$results$default_photo$medium_url
+photo_attribution <- data$results$default_photo$attribution
+
+  
+# VISUALISE
+
+if(personalised){
+  p(
+    "In ",
+     month_name_got_personal_records_from,
+     ", the place you visited with the highest DECIDE recording priority was ",
+     place_name,
+     " where you recorded ",
+     top_visit$n_species,
+     " species. One of these species was ",
+     common_name(top_visit$scientific_name),
+     " (",
+     em(top_visit$scientific_name),
+     ")."
+    ) %>% print() #if a p() function (or equivalent) is in an if statement you need to print it using print()
+} else {
+  p("A visit last month to the highest recording priority area was a visit to ",place_name,"  and recorded ",top_visit$n_species," species. One of the species recorded was",em(paste0(top_visit$scientific_name,"."))) %>% print()
+}
+
+
+marker_image <- readPNG("images/map-marker-2-128.png")
+
+lat1 <- top_visit$latitude-0.005
+lat2 <- top_visit$latitude+0.005
+lon1 <- top_visit$longitude-0.0075
+lon2 <- top_visit$longitude+0.0075
+
+ds1_map <- openmap(c(lat2, lon1), c(lat1, lon2), zoom = 16,
+                  type = "bing", mergeTiles = TRUE) #define the background satelite image map
+ds1_map <- openproj(ds1_map) #reproject
+ds1_map_plot <- OpenStreetMap::autoplot.OpenStreetMap(ds1_map)+
+  annotation_raster(marker_image,
+                    ymin = top_visit$latitude,
+                    ymax = top_visit$latitude+0.002,
+                    xmin = top_visit$longitude-0.001,
+                    xmax = top_visit$longitude+0.001)+
+  theme(axis.text.x=element_blank(), #remove x axis labels
+        axis.ticks.x=element_blank(), #remove x axis ticks
+        axis.text.y=element_blank(),  #remove y axis labels
+        axis.ticks.y=element_blank(),  #remove y axis ticks
+        legend.position = "none",
+        panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())+
+  xlab("")+
+  ylab("") #define map and add marker
+
+#define the image as a ggplot
+butterfly_image <- ggdraw() + draw_image(photo_url, scale = 0.9)
+
+img(src=photo_url,class="circleimage") %>% print()
+p(em("Photo ",photo_attribution),style="font-size:10px;")
+
+#use {patchwork} to put it together side by side
+#butterfly_image+ds1_map_plot
+
+ds1_map_plot
+
+
+
+
+#lead text before button
+p("The DECIDE recoder tool updates in response to records in high priority areas like this. See the impact of your record...")
+
+#vsit tool button
+div(class="center",
+  a("Visit the DECIDE Recorder Tool", 
+    href=paste0("https://decide.ceh.ac.uk/opts/scoremap/map?lat=",
+                top_visit$latitude,
+                "&lon=",
+                top_visit$longitude,
+                "&score=true&popup=true&zoom=13&ds=1"),
+    class="button")
+)
+
+hr() #line across
+```
+
+
+
+
+
+
+
+
+
+
+
+### Going the extra mile
+
+```{r ds2, echo  = F, results='asis'}
+#DATA STORY 2
+
+# PROCESS
+if (personalised){
+  ds2_data <- individual_data_this_month #%>% 
+    #filter(recording_priority >0.008)
+} else {
+  ds2_data <- community_data_this_month %>% 
+    sample_n(1)
+}
+
+#arbitrary threshold then group by location
+high_priority_records <- ds2_data  %>% 
+  group_by(grid_square,recording_priority) %>% 
+  summarise(n=n(),
+            n_species = length(unique(scientific_name)),
+            latitude = mean(latitude),
+            longitude = mean(longitude)) %>%
+  arrange(-recording_priority) %>%
+  head(5)
+
+#how many species in total were recorded at these high priority locations?
+n_species <- ds2_data %>% filter(recording_priority >=min(high_priority_records$recording_priority)) %>% pull(scientific_name) %>% unique() %>% length()
+
+#get suggestions from the DECIDE tool
+
+#select a central point to get suggestions - in this basic case it's just the first record in the high_priority_records df
+central_point_lat <- high_priority_records$latitude[nrow(high_priority_records)]
+central_point_long <- high_priority_records$longitude[nrow(high_priority_records)]
+
+central_point_sf <- st_point(c(central_point_long,central_point_lat))
+central_point_sf <- st_geometry(central_point_sf)
+st_crs(central_point_sf) <- 4326
+
+#do the request
+res = GET("https://decide.ceh.ac.uk/score/nudges",
+            query = list(
+              lat = toString(central_point_lat),
+              lon = toString(central_point_long),
+              rad = 5000,
+              name = "butterfly",
+              min = "1",
+              max = "10"
+            ))
+#read the JSON
+suggestions <- fromJSON(fromJSON(rawToChar(res$content)))
+#get the geojson
+suggestions <- suggestions$geojson %>% geojson_sf()
+
+# VISUALISE
+library(ggrepel)
+# 
+if(personalised){
+  p("In",month_name_got_personal_records_from,"you recorded in ", strong(nrow(high_priority_records)) ,"high priority locations and recorded a total of ",strong(n_species)," species at these sites. Records at these sites fill gaps in our understanding of species’ distributions.") %>% print()
+  
+  # generate the map using ggspatial package
+  ds2_map <- ggplot() +
+    # loads background map tiles from a tile source
+    annotation_map_tile(type = "cartolight", zoomin = -1,progress="none")+
+    layer_spatial(high_priority_records,mapping = aes(size = n), shape = 15, alpha = 0.5, col = "#e65c00" )+ 
+    #layer_spatial(high_priority_records,size = 3, alpha = 0.3)+ 
+    fixed_plot_aspect() + #make the plot square
+    #labs(size="Number Of Records at a location")+ 
+    #stat_spatial_identity(aes(high_priority_records$latitude, high_priority_records$longitude, label = high_priority_records$n), geom = "label_repel") +
+    theme(axis.text.x=element_blank(), #remove x axis labels
+        axis.ticks.x=element_blank(), #remove x axis ticks
+        axis.text.y=element_blank(),  #remove y axis labels
+        axis.ticks.y=element_blank(),  #remove y axis ticks
+        legend.position = "none",
+        panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        plot.caption = element_text(color = "#767675", face = "italic"))+ 
+    labs(caption = "Square size indicates the number of records in a location")
+  
+  cat("<div class='dataStoryImage'>") # this isa way we can apply css to images that are plotted by putting them in the
+  print(ds2_map)
+  cat("</div>")
+}
+
+p("Below are some high priority location suggestion, why not go to one of these next time you record?")
+
+arrows <- data.frame(y1 = central_point_lat,
+                    x1 = central_point_long,
+                    x2 = st_coordinates(suggestions)[,"X"],
+                    y2 = st_coordinates(suggestions)[,"Y"])
+
+ds2_map_2 <- ggplot() +
+  #geom_segment(data = arrows, aes(y = y1, x = x1, yend = y2, xend = x2),arrow = arrow(ends="first"))+
+  # loads background map tiles from a tile source
+  annotation_map_tile(type = "cartolight", zoomin = -1,progress="none")+
+  layer_spatial(suggestions, col = "#331400", size = 4, alpha = 0.3)+
+  layer_spatial(suggestions, col = "#e65c00", size = 3, alpha = 0.6)+
+  layer_spatial(central_point_sf)+
+  fixed_plot_aspect() + 
+  theme(axis.text.x=element_blank(), #remove x axis labels
+        axis.ticks.x=element_blank(), #remove x axis ticks
+        axis.text.y=element_blank(),  #remove y axis labels
+        axis.ticks.y=element_blank(),  #remove y axis ticks
+        legend.position = "none",
+        panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        plot.caption = element_text(color = "#767675", face = "italic"))+ 
+        labs(caption = "The orange locations are all high priority areas according to our estimations")
+        
+print(ds2_map_2)
+
+
+p("View suggestions for this location... ")
+
+#vsit tool button
+div(class="center",
+  a("Visit the DECIDE Recorder Tool", 
+    href=paste0("https://decide.ceh.ac.uk/opts/scoremap/map?lat=",
+                central_point_lat,
+                "&lon=",
+                central_point_long,
+                "&score=true&zoom=13&ds=2&suggestions=true"),
+    class="button")
+)
+
+
+hr() #line across
+```
+
+
+
+
+
+
+
+
+
+
+
+
+### Other recording activity near where you record
+
+```{r ds3, echo  = F, results='asis'}
+#DATA STORY 3
+
+# PROCESS
+
+
+# VISUALISE
+p("The DECIDE comunity has been very active this month. See where your records fall within them:")
+
+if(personalised){
+  ds3_map <-ggplot()+
+    annotation_map_tile(type = "cartolight", zoomin = -1,progress="none")+
+    annotation_spatial(community_data_this_month, col = "#331400", size = 2, alpha = 0.3) +
+    layer_spatial(individual_data_this_month,col = "#E69F00", size = 3, alpha = 0.3)+ 
+    fixed_plot_aspect()+
+    theme(axis.text.x=element_blank(), #remove x axis labels
+        axis.ticks.x=element_blank(), #remove x axis ticks
+        axis.text.y=element_blank(),  #remove y axis labels
+        axis.ticks.y=element_blank(),  #remove y axis ticks
+        legend.position = "none",
+        panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        plot.caption = element_text(color = "#767675", face = "italic"))+ 
+        labs(caption = "This month's records from the DECIDE community with yours highlighted in orange")
+} else {
+  ds3_map <-ggplot()+
+    annotation_map_tile(type = "cartolight", zoomin = -1,progress="none")+
+    layer_spatial(community_data_this_month, col = "#331400", size = 2, alpha = 0.3)+
+    fixed_plot_aspect()+
+    theme(axis.text.x=element_blank(), #remove x axis labels
+        axis.ticks.x=element_blank(), #remove x axis ticks
+        axis.text.y=element_blank(),  #remove y axis labels
+        axis.ticks.y=element_blank(),  #remove y axis ticks
+        legend.position = "none",
+        panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        plot.caption = element_text(color = "#767675", face = "italic"))+ 
+        labs(caption = "This month's records from the DECIDE community")
+}
+
+print(ds3_map)
+
+
+p("Why not find some gaps in your area using the DECIDE tool?")
+
+#vsit tool button
+div(class="center",
+  a("Visit the DECIDE Recorder Tool", 
+    href=paste0("https://decide.ceh.ac.uk/opts/scoremap/map?lat=",
+                mean(range(individual_data_this_month$latitude)),
+                "&lon=",
+                mean(range(individual_data_this_month$longitude)),
+                "&zoom=10&ds=3"),
+    class="button")
+)
+
+
+hr() #line across
+```
+
+
+
+
+
+
+
+
+
+### Your impact on improving our understanding of species distributions.
+
+```{r ds4, echo  = F, results='asis'}
+#DATA STORY 4
+
+
+
+# PROCESS
+decide_reputation_data <- combined_data %>% 
+  st_drop_geometry() %>%
+  filter(observed_by!="Recorder details held at BRERC") %>% #remove these users
+  filter(year==year_featured,month < (month_featured+1)) %>% #get the target year / month range
+  group_by(grid_square,observed_on,observed_by,target_user) %>% #only look at visits
+  summarise(recording_priority = mean(recording_priority))%>% 
+  arrange(observed_on)
+
+#cumulative sum decide score
+#https://stackoverflow.com/questions/27275363/r-cumsum-per-group-in-dplyr
+decide_reputation_data <- decide_reputation_data %>% 
+  group_by(observed_by) %>%
+  arrange(observed_on) %>%
+  mutate(cumulative_recording_priority = cumsum(recording_priority))
+
+
+# VISUALISE
+
+
+if(personalised){ #set colour = target_user to highlight the personalisation
+  
+  p(paste0("High DECIDE scores indicate records from high priority areas. See how your records from ",month_name_got_personal_records_from," add up")) %>% print()
+  ds4_plot <- ggplot(decide_reputation_data,aes(x = observed_on ,y = cumulative_recording_priority*1000,group = observed_by,colour = target_user))+
+    geom_line(aes(linetype=target_user, size = target_user, alpha = target_user))+
+    scale_linetype_manual(values=c("dashed", "solid"))+
+    scale_color_manual(values=c('#999999','#E69F00'))+
+    scale_size_manual(values=c(0.5, 3))+
+    scale_alpha_manual(values = c(0.4, 0.8))+
+    xlab("")+
+    ylab("DECIDE-o-meter")+ 
+    theme_minimal() +
+    theme(legend.position = "none",
+        plot.caption = element_text(color = "#767675", face = "italic"))+ 
+        labs(caption = "Your cumulative DECIDE scores in orange with community scores in gray")
+} else {
+  
+  p(paste0("High DECIDE scores indicate records from high priority areas. See how the community stacks up scores in ",month_name)) %>% print()
+  ds4_plot <- ggplot(decide_reputation_data,aes(x = observed_on ,y = cumulative_recording_priority*1000,group = observed_by))+
+    geom_line(size = 1, linetype = "dashed", color = "#767675")+
+    xlab("")+
+    ylab("DECIDE-o-meter")+ 
+    theme_minimal() +
+    theme(legend.position = "none",
+        plot.caption = element_text(color = "#767675", face = "italic"))+ 
+        labs(caption = "Cumulative DECIDE scores for recorders in the community")
+}
+
+print(ds4_plot)
+
+p("Continue to build your impact and pick up were you left off by planning a visit near the location of your most recent record")
+
+#vsit tool button
+div(class="center",
+  a("Visit the DECIDE Recorder Tool", 
+    href=paste0("https://decide.ceh.ac.uk/opts/scoremap/map?lat=",
+                individual_data_this_month %>% as.data.frame() %>% arrange(observed_on) %>% tail(1) %>% pull(latitude),
+                "&lon=",
+                individual_data_this_month %>% as.data.frame() %>% arrange(observed_on) %>% tail(1) %>% pull(longitude),
+                "&zoom=13&ds=3&score=true&suggestions=true"),
+    class="button")
+)
+
+hr() #line across
+
+```
+
+This newsletter was generated on `r Sys.time()`
+
+Don\'t want to receive these emails any more? <a>Unsubscribe from the DECIDE personalised newsletter</a>
+
