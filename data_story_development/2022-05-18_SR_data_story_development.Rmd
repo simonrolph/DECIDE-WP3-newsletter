@@ -451,17 +451,19 @@ if (personalised){
 }
 
 #arbitrary threshold then group by location
-high_priority_records <- ds2_data  %>% 
+all_records <- ds2_data  %>% 
   st_transform(crs = 4326) %>%
-  group_by(grid_square,recording_priority) %>% 
+  group_by(grid_square) %>% 
   summarise(n=n(),
             n_species = length(unique(scientific_name)),
             latitude = mean(latitude),
-            longitude = mean(longitude)) %>%
-  arrange(-recording_priority) %>%
-  head(5)
+            longitude = mean(longitude),
+            recording_priority = max(recording_priority)) %>%
+  arrange(-n_species)
 
-st_crs(high_priority_records) <- 4326
+st_crs(all_records) <- 4326
+
+high_priority_records <- all_records %>% head(5)
 
 #how many species in total were recorded at these high priority locations?
 n_species <- ds2_data %>% filter(recording_priority >=min(high_priority_records$recording_priority)) %>% pull(scientific_name) %>% unique() %>% length()
@@ -469,8 +471,8 @@ n_species <- ds2_data %>% filter(recording_priority >=min(high_priority_records$
 #get suggestions from the DECIDE tool
 
 #select a central point to get suggestions - in this basic case it's just the first record in the high_priority_records df
-central_point_lat <- high_priority_records$latitude[nrow(high_priority_records)]
-central_point_long <- high_priority_records$longitude[nrow(high_priority_records)]
+central_point_lat <- high_priority_records$latitude[1]
+central_point_long <- high_priority_records$longitude[1]
 
 central_point_sf <- st_point(c(central_point_long,central_point_lat))
 central_point_sf <- st_geometry(central_point_sf)
@@ -495,7 +497,7 @@ suggestions <- suggestions$geojson %>% geojson_sf()
 library(ggrepel)
 # 
 if(personalised){
-  p("In",month_name_got_personal_records_from,"you recorded in ", strong(nrow(high_priority_records)) ,"high priority locations and recorded a total of ",strong(n_species)," species at these sites. Records at these sites fill gaps in our understanding of species’ distributions.") %>% print()
+  p("In",month_name_got_personal_records_from,"you recorded in ", strong(nrow(high_priority_records)) ,"different 100x100m locations and recorded a total of ",strong(n_species)," species across these sites. Records at these sites fill gaps in our understanding of species’ distributions. Here are the ",nrow(high_priority_records)," locations with the higest number of species you recorded.") %>% print()
   
   # generate the map using ggspatial package
   ds2_map <- ggplot() +
@@ -524,7 +526,7 @@ if(personalised){
   cat("</div>")
 }
 
-p("Below are some high priority location suggestion, why not go to one of these next time you record?")
+p("Nearby to the location you recorded the most species there are some high recording priority locations which are in need of records, why not go to one of these next time you record?")
 
 arrows <- data.frame(y1 = central_point_lat,
                     x1 = central_point_long,
@@ -537,7 +539,7 @@ ds2_map_2 <- ggplot() +
   annotation_map_tile(type = "cartolight", zoomin = -1,progress="none")+
   layer_spatial(suggestions, col = "#331400", size = 4, alpha = 0.3)+
   layer_spatial(suggestions, col = "#e65c00", size = 3, alpha = 0.6)+
-  layer_spatial(central_point_sf)+
+  layer_spatial(central_point_sf,col = "green",size = 10)+
   fixed_plot_aspect() + 
   theme(axis.text.x=element_blank(), #remove x axis labels
         axis.ticks.x=element_blank(), #remove x axis ticks
