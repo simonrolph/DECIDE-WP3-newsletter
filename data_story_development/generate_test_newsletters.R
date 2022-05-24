@@ -7,7 +7,8 @@ params_df <- data.frame(
   user = "Keywood, B. Ben",
   month_featured = 4:8,
   year_featured = 2019,
-  personalised = rep(c(TRUE,FALSE),each = 5)
+  #personalised = rep(c(TRUE,FALSE),each = 5)
+  personalised = TRUE
 )
 
 
@@ -28,7 +29,7 @@ for(i in 1:nrow(params_df)){
                           ".html"
                           )
   
-  render("data_story_development.Rmd",
+  render("2022-05-18_SR_data_story_development.Rmd",
          output_file = out_file_name,
          params = markdown_params)
 }
