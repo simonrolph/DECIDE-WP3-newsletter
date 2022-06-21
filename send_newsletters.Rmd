@@ -4,65 +4,101 @@ output: html_document
 ---
 
 
-This R script is a simple way of sending emails out in bulk, it gets the list of users from google sheets, generates email content for all users (step 1). Then it goes through all the users again and sends the emails (step 2).
+This R script is a simple way of sending emails out in bulk, it gets the list of users from a csv, builds a dataframe (step 0), generates email content for all users (step 1). Then it goes through all the users again and sends the emails (step 2).
 
 This is set up as a markdown document so that it could in theory be run on a schedule on Rstudio: https://docs.rstudio.com/connect/user/scheduling/ connect.
 
 Initial set up, packages, credentials for email / google sheets:
 
 ```{r}
-
-library(googlesheets4)
 library(blastula)
 library(rmarkdown)
+library(readr)
+library(fst)
+library(dplyr)
 
-creds <- creds_envvar(user = "simonrolph.ukceh@gmail.com",
-                      pass_envvar = "gmail_password",
-                      provider = "gmail",
-                      use_ssl = T)
+library(sf)
 
-#authenticate google sheets
-gs4_auth(
-    cache = ".secrets",
-    email = "simonrolph.ukceh@gmail.com"
-)
 
 ```
 
-Load the users from googlesheets:
+Load the users:
 
 ```{r}
-#load the users
-#read as all character with the col_types argument (especially the irecord warehouse ID which it likes to convert to a scientific notation number)
-user_db <- range_read("1akEZzgb5tnMNQhnAhH3OftLm0e1kyH8alhCYIHcYxes",col_types = c("c"))
+#load dataframe
+user_db <- read_csv("data_personal/data-2022-06-06.csv")
+names(user_db)[1] <- "row"
+
 
 #create a new column which will be used to store the file location of outputted email
 user_db$newsletter_file_location <- ""
 ```
 
+Step 0: build the dataframe
+
+
+```{r}
+#note all the extra back slashes for escaping
+file_location <- "\\\\nerclactdb.adceh.ceh.ac.uk\\appdev\\appdev\\DECIDE\\data\\species_data\\data_cache\\butterfly"
+
+records <- list.files(file_location) %>%
+  paste(file_location,.,sep="\\") %>%
+  lapply(read_fst) %>%
+  bind_rows()
+
+glimpse(records)
+
+#get easting northings
+records <- st_as_sf(records,coords = c('longitude', 'latitude'), crs = 4326)  #sf version
+records[,c("longitude","latitude")] <- st_coordinates(records)
+
+records  <- records %>% st_transform(27700)
+records[,c("easting","northing")] <- st_coordinates(records)
+records <- st_drop_geometry(records)
+
+#get day/month/year columns
+records$day <- records$observed_on %>% as.Date() %>% format(format = "%d")
+records$month <- records$observed_on %>% as.Date() %>% format(format = "%m")
+records$year <- records$observed_on %>% as.Date() %>% format(format = "%Y")
+
+saveRDS(records,"data/species_records.RDS")
+
+```
+
+
 Step 1: generate the newsletters
 
 For each user:
  * create newsletter
- * randomise items
  * save outputs
-
-
+ 
+ 
 ```{r}
 n_users <- nrow(user_db)
 
 #to be looped
 #i <- 1
 
+start_date <- Sys.Date()
+end_date <- Sys.Date()-30
+
 for (i in 1:n_users){
+  
+  
+  
   #get all the markdown parameters into a list
   markdown_params <- 
     list(
         name = user_db$name[i],
-        email = user_db$email[i],
         irecord_username = user_db$irecord_username[i],
         ispot_username = user_db$ispot_username[i],
         inat_username = user_db$inat_username[i],
+        start_date = start_date,
+        end_date =  end_date,
+        try_personalised = TRUE,
+        records_data_location = "data/species_records.RDS",
+        home_lat = user_db$home_lat[i],
+        home_lon = user_db$home_lon[i],
         irecord_key      = gsub("Â","",Sys.getenv("irecord_key")),
         ispot_key        = Sys.getenv("ispot_key")
     )
@@ -83,14 +119,11 @@ for (i in 1:n_users){
   #render the newsletter
   out_file_name <- paste0("../newsletters/",Sys.Date(),"/",markdown_params$name,".html")
   
-  user_db$newsletter_file_location[i] <- render("newsletter_templates/v0_0_1.Rmd",
+  user_db$newsletter_file_location[i] <- render("newsletter_templates/v0_0_2.Rmd",
                 output_file = out_file_name,
                 params = markdown_params
   )
 }
-
-
-
 
 
 ```
@@ -103,24 +136,29 @@ Send emails
 ```{r}
 #i <- 1
 
-for (i in 1:n_users){
-  #define sender and recipient (could change this for testing, eg. set the recipient to your email to generate a batch of emails for different users but then see what they look like in your own inbox without spamming real users.)
-  sender <- "simonrolph.ukceh@gmail.com" # obviously we want to change then in real use
-  recipients <- user_db$email[i]
-  
-  # turn the rendered markdown into a blastula ready email object
-  email_obj <- blastula:::cid_images(user_db$newsletter_file_location[i])
-  
-  #send email
-  smtp_send(email_obj,
-            from = sender,
-            to = recipients,
-            subject = "Your DECIDE Newsletter",
-            credentials = creds,
-            verbose = T
-  )
-
-}
+# creds <- creds_envvar(user = "simrol@ceh.ac.uk",
+#                           pass_envvar = "outlook_password",
+#                           provider = "office365",
+#                           use_ssl = T)
+# 
+# for (i in 1:n_users){
+#   #define sender and recipient (could change this for testing, eg. set the recipient to your email to generate a batch of emails for different users but then see what they look like in your own inbox without spamming real users.)
+#   sender <- "simrol@ceh.ac.yk" # obviously we want to change then in real use
+#   recipients <- user_db$email[i]
+#   
+#   # turn the rendered markdown into a blastula ready email object
+#   email_obj <- blastula:::cid_images(user_db$newsletter_file_location[i])
+#   
+#   #send email
+#   smtp_send(email_obj,
+#             from = sender,
+#             to = recipients,
+#             subject = "Your DECIDE Newsletter",
+#             credentials = creds,
+#             verbose = T
+#   )
+# 
+# }
 
 ```
 
