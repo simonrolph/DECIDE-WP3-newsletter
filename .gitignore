@@ -16,3 +16,7 @@ sign_up_app/email_renders/*.html
 
 
 sign_up_app/data/sign_up_data.rds
+
+
+data_personal
+data/species_records.RDS

@@ -88,13 +88,13 @@ ui <- fluidPage(
         # Application title
         
         titlePanel("MyDECIDE Sign-up"),
-        p(strong("Are you interested in discovering how your wildlife recording makes a difference? Would you like personalised feedback about the importance of your butterfly recording?"),"If you answered yes, then sign up to take part in  MyDECIDE, where you you will get the chance to shape the feedback that recorders receive! By signing up to MyDECIDE you will receive five personalised email newsletters during summer 2022 and you will also be contacted in order to ask a couple of simple questions about the newsletter. We will not retain your details after the end of the study."),
+        p(strong("Are you interested in discovering how your wildlife recording makes a difference? Would you like personalised feedback about the importance of your butterfly recording?"),"If you answered yes, then sign up to take part in  MyDECIDE, where you you will get the chance to shape the feedback that recorders receive! By signing up to MyDECIDE you will receive personalised emails during summer 2022 and you will also be contacted in order to ask a couple of simple questions about the newsletter. We will not retain your details after the end of the study."),
         p("We will use the butterfly records you have submitted online to provide a summary of your recent activity. We will show how it fits in with where other people are recording and make suggestions for places to visit next based on information in the DECIDE Tool."),
         
         tags$ul(
-            tags$li("MyDECIDE will be sent to you monthly by email from June to October 2022, each reporting on your recording of the previous month."),
+            tags$li("MyDECIDE will be sent to you by email from June to October 2022, each email reporting on your recent recording."),
             tags$li("Please note that MyDECIDE is only available for butterfly records and, for now, we will only refer to records submitted via iRecord, iSpot and/or iNaturalist,"),
-            tags$li("If you don’t submit butterfly records via online recording platforms, you can still sign up, but the information you receive in the email newsletters will relate to general butterfly recording activity in your chosen area.")),
+            tags$li("If you don’t submit butterfly records via online recording platforms, you can still sign up, but the information you receive in the emails will relate to general butterfly recording activity in your chosen area.")),
         p("In order to send you information about your records, we need to know your email address and your usernames on the biological recording platforms you use. Please complete the form below.")
     ),
     
@@ -123,7 +123,7 @@ ui <- fluidPage(
         #the persons recording platforms and usernames
         hr(),
         h3("Step 2: Provide information about yourself and how you record"),
-        p("In order to generate the email newsletters for MyDECIDE we need your IDs on the recording platforms you use. Once you have entered your usernames you need to click on the 'Check usernames' button."),
+        p("In order to generate the emails for MyDECIDE we need your IDs on the recording platforms you use. Once you have entered your usernames you need to click on the 'Check usernames' button."),
         
         textInput("name","Name",placeholder = "What shall we call you in the email?"),
         
@@ -138,7 +138,7 @@ ui <- fluidPage(
         div(id="recording_online",
         
             checkboxGroupInput("record_platforms",
-                "What platform(s) do you use for recording? If you record on multiple platforms you will be sent one email newsletter that combines records from multiple platforms.",
+                "What platform(s) do you use for recording? If you record on multiple platforms you will be sent one email that combines records from multiple platforms.",
                 c("iRecord"="irecord","iSpot"="ispot","iNaturalist" = "inaturalist")
             ),
             
@@ -357,7 +357,7 @@ server <- function(input, output) {
                 insertUI(
                     selector = "#email_verification_success_message",
                     where = "afterEnd",
-                    ui = p("You haven't signed up to our personalised email newsletter yet")
+                    ui = p("You haven't signed up to MyDECIDE yet")
                     
                 )
                 
@@ -370,7 +370,7 @@ server <- function(input, output) {
                     selector = "#email_verification_success_message",
                     where = "afterEnd",
                     ui = div(
-                        p("You have already signed up to our personalised email newsletter. Here are the details we have on you:"),
+                        p("You have already signed up to MyDECIDE. Here are the details we have on you:"),
                         p(paste0("Name: ",user_db[user_id,"name"])),
                         p(paste0("Email: ",user_db[user_id,"email"])),
                         p(paste0("iRecord: ",user_db[user_id,"irecord_username"])),
@@ -436,7 +436,7 @@ server <- function(input, output) {
     observeEvent(input$un_sign_up_initial, {
         showModal(modalDialog(
             title = "Unsubscribe",
-            "By unsubscribing you will no longer receive personalised DECIDE newsletters",
+            "By unsubscribing you will no longer receive MyDECIDE emails",
             easyClose = TRUE,
             footer = tagList(
                 modalButton("Back"),
@@ -477,7 +477,7 @@ server <- function(input, output) {
         #range_write("sheet_id",overwrite_user,range = range_to_write,col_names = F) #GSHEETS
         
         showModal(modalDialog(title = "",
-          p("You have unsubscribed from the the DECIDE personalised newsletter"),
+          p("You have unsubscribed from MyDECIDE"),
           easyClose = F
         ))
         
@@ -632,7 +632,7 @@ server <- function(input, output) {
             insertUI(
                 selector = "#sign_up_initial",
                 ui = div(id = "sign-up-warning",
-                         paste0("You must agree to the terms and conditions to sign up to the personalised newsletter"),class="alert alert-warning",role="danger"),
+                         paste0("You must agree to the terms and conditions to sign up to MyDECIDE"),class="alert alert-warning",role="danger"),
                 where = "afterEnd"
             )
         } else if (input$name == ""){ #no name
@@ -867,7 +867,7 @@ server <- function(input, output) {
         removeModal()
         #show success modal with onward links
         showModal(modalDialog(title = "Success!",
-                              p("You have successfully signed up to the DECIDE personalised newsletter. You will receive confirmation via email."),
+                              p("You have successfully signed up to the MyDECIDE. You will receive confirmation via email."),
                               easyClose = F
                               
         ))
@@ -890,7 +890,7 @@ server <- function(input, output) {
         smtp_send(email_obj,
                   from = sender,
                   to = recipients,
-                  subject = "Welcome to the DECIDE newsletter",
+                  subject = "Welcome to the MyDECIDE",
                   credentials = creds
         )
         

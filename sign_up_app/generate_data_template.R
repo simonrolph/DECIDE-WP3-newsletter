@@ -18,14 +18,12 @@ df <- df[-1,]
 
 
 library(readr)
-df2 <- read_csv("data/data-2022-05-16.csv",
+df2 <- read_csv("data/data-2022-06-08.csv",
                col_types = cols(...1 = col_skip(), 
-                                subscribed_on = col_date(format = "%Y-%m-%d"),
-                                unsubscribed_on = col_date(format = "%Y-%m-%d"),
+                                subscribed_on = col_date(format = "%d/%m/%Y"),
+                                unsubscribed_on = col_date(format = "%d/%m/%Y"),
                                 home_lat = col_number(), 
                                 home_lon = col_number()))
-
-df2 <- df2[-(1:4),]
 
 df3 <- dplyr::bind_rows(df,df2)
 
