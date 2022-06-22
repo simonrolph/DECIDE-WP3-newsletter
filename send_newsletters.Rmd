@@ -27,14 +27,22 @@ Load the users:
 ```{r}
 #load dataframe
 user_db <- read_csv("data_personal/data-2022-06-06.csv")
-names(user_db)[1] <- "row"
+names(user_db)[1] <- "user_id"
 
+user_db <- user_db %>% filter(name == "Simon")
 
 #create a new column which will be used to store the file location of outputted email
 user_db$newsletter_file_location <- ""
+
+#for TESTING
+#all datastories
+all_data_stories <- expand.grid(personalised = c(T,F),ds =1:5)[1:9,]
+
+expand.grid.df <- function(...) Reduce(function(...) merge(..., by=NULL), list(...))
+emails <- expand.grid.df(all_data_stories,user_db)
 ```
 
-Step 0: build the dataframe
+Step 0: build the records data dataframe
 
 
 ```{r}
@@ -74,33 +82,31 @@ For each user:
  
  
 ```{r}
-n_users <- nrow(user_db)
-
+n_emails <- nrow(emails)
+n_emails <- 1 
 #to be looped
 #i <- 1
 
-start_date <- Sys.Date()
-end_date <- Sys.Date()-30
+start_date <- Sys.Date()-30
+end_date <- Sys.Date()
 
-for (i in 1:n_users){
-  
-  
-  
+for (i in 1:n_emails){
   #get all the markdown parameters into a list
   markdown_params <- 
     list(
-        name = user_db$name[i],
-        irecord_username = user_db$irecord_username[i],
-        ispot_username = user_db$ispot_username[i],
-        inat_username = user_db$inat_username[i],
+        name = emails$name[i],
+        irecord_username = emails$irecord_username[i],
+        ispot_username = emails$ispot_username[i],
+        inat_username = emails$inat_username[i],
         start_date = start_date,
         end_date =  end_date,
-        try_personalised = TRUE,
+        try_personalised = emails$personalised[i],
         records_data_location = "data/species_records.RDS",
-        home_lat = user_db$home_lat[i],
-        home_lon = user_db$home_lon[i],
+        home_lat = emails$home_lat[i],
+        home_lon = emails$home_lon[i],
         irecord_key      = gsub("Â","",Sys.getenv("irecord_key")),
-        ispot_key        = Sys.getenv("ispot_key")
+        ispot_key        = Sys.getenv("ispot_key"),
+        data_story = as.numeric(emails$ds[i])
     )
   
   #if any usernames are not there then set them to NA
@@ -117,11 +123,22 @@ for (i in 1:n_users){
   }
   
   #render the newsletter
-  out_file_name <- paste0("../newsletters/",Sys.Date(),"/",markdown_params$name,".html")
+  out_file_name <- paste0("../newsletters/",
+                          Sys.Date(),
+                          "/",
+                          emails$user_id[i],
+                          "_",
+                          markdown_params$try_personalised,
+                          "_",
+                          markdown_params$data_story,
+                          ".html")
   
-  user_db$newsletter_file_location[i] <- render("newsletter_templates/v0_0_2.Rmd",
-                output_file = out_file_name,
-                params = markdown_params
+  emails$newsletter_file_location[i] <- render(
+    "newsletter_templates/v0_0_3.Rmd",
+    output_file = out_file_name,
+    params = markdown_params,
+    output_options = list(self_contained=TRUE,output = "blastula::blastula_email")
+    
   )
 }
 
@@ -134,31 +151,33 @@ for each user:
 Send emails
 
 ```{r}
-#i <- 1
+creds <- creds_envvar(user = "simrol@ceh.ac.uk",
+                          pass_envvar = "outlook_password",
+                          provider = "office365",
+                          use_ssl = T)
 
-# creds <- creds_envvar(user = "simrol@ceh.ac.uk",
-#                           pass_envvar = "outlook_password",
-#                           provider = "office365",
-#                           use_ssl = T)
-# 
-# for (i in 1:n_users){
-#   #define sender and recipient (could change this for testing, eg. set the recipient to your email to generate a batch of emails for different users but then see what they look like in your own inbox without spamming real users.)
-#   sender <- "simrol@ceh.ac.yk" # obviously we want to change then in real use
-#   recipients <- user_db$email[i]
-#   
-#   # turn the rendered markdown into a blastula ready email object
-#   email_obj <- blastula:::cid_images(user_db$newsletter_file_location[i])
-#   
-#   #send email
-#   smtp_send(email_obj,
-#             from = sender,
-#             to = recipients,
-#             subject = "Your DECIDE Newsletter",
-#             credentials = creds,
-#             verbose = T
-#   )
-# 
-# }
+for (i in 1:n_emails){
+  print(i)
+  
+  #define sender and recipient (could change this for testing, eg. set the recipient to your email to generate a batch of emails for different users but then see what they look like in your own inbox without spamming real users.)
+  sender <- "simrol@ceh.ac.uk" # obviously we want to change then in real use
+
+  # turn the rendered markdown into a blastula ready email object
+  email_obj <- blastula:::cid_images(emails$newsletter_file_location[i])
+
+  #send email
+  smtp_send(email_obj,
+            from = sender,
+            to = emails$email[i],
+            #to = "simon.p.rolph@gmail.com",
+            subject = "MyDECIDE",
+            credentials = creds,
+            verbose = T
+  )
+  
+  Sys.sleep(10)
+
+}
 
 ```
 
