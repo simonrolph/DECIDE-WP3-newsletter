@@ -745,7 +745,7 @@ if (params$data_story == 3){
   p("Join the recording community and find high DECIDE priority locations to visit.") %>% print()
   
   #vsit tool button
-  decide_button(pasteo("https://dwptwo-mydecide.datalabs.ceh.ac.uk?lat=",
+  decide_button(paste0("https://dwptwo-mydecide.datalabs.ceh.ac.uk?lat=",
                   mean(range(individual_data_this_month$latitude)),
                   "&lon=",
                   mean(range(individual_data_this_month$longitude)),
@@ -765,7 +765,7 @@ if (params$data_story == 3){
 
 ```{r ds4, echo  = F, results='asis'}
 if(params$data_story == 4){
-  h3("Your impact on improving our understanding of species distributions")
+  h3("Your impact on improving our understanding of species distributions") %>% print()
   #DATA STORY 4
   
   #a set of 100 max nearby users
