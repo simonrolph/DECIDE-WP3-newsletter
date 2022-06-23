@@ -44,6 +44,11 @@ all_data_stories <- expand.grid(personalised = c(T,F),ds =1:5)[1:9,]
 
 expand.grid.df <- function(...) Reduce(function(...) merge(..., by=NULL), list(...))
 emails <- expand.grid.df(all_data_stories,user_db)
+emails %>% View()
+
+#don't make personalised emails for people who don't record online
+emails <- emails[emails$record_online | !emails$personalised,]
+
 ```
 
 Step 0: build the records data dataframe
@@ -76,6 +81,8 @@ records$year <- records$observed_on %>% as.Date() %>% format(format = "%Y")
 saveRDS(records,"data/species_records.RDS")
 
 ```
+
+
 
 
 Step 1: generate the newsletters
@@ -172,7 +179,7 @@ for (i in 1:n_emails){
   smtp_send(email_obj,
             from = sender,
             to = c(emails$email[i]),
-            subject = "MyDECIDE",
+            subject = "MyDECIDE -TEST VERSION",
             credentials = creds,
             verbose = F
   )
