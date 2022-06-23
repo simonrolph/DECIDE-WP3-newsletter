@@ -16,7 +16,9 @@ sign_up_app/email_renders/*.html
 
 
 sign_up_app/data/sign_up_data.rds
+sign_up_app/data/*.csv
 
 
 data_personal
 data/species_records.RDS
+newsletter_templates/rosm.cache

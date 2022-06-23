@@ -1,11 +1,11 @@
 ---
-title: "MyDECIDE"
+title: "MyDECIDE - TEST VERSION"
 output: blastula::blastula_email
 params:
     name: "Person X"
-    irecord_username: "123953"
+    irecord_username: ""
     ispot_username: ""
-    inat_username: "simonrolph"
+    inat_username: ""
     start_date: "2022-05-21"
     end_date: "2022-06-21"
     try_personalised: TRUE
@@ -18,7 +18,7 @@ params:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = F,warning = F,message = FALSE, fig.align = 'center',error=T) # one could add this for aligning all images to the centre
+knitr::opts_chunk$set(echo = F,warning = F,message = FALSE, fig.align = 'center',error=F) # one could add this for aligning all images to the centre
 
 #if running interactively you need to set working directory
 #setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
@@ -69,6 +69,25 @@ common_name <- function(sci_name){
 
 library(geosphere)#for distances between things
 
+
+hr2 <- function(){
+  #div(style = "text-align: left;",img(src = "../images/hr.png"))
+  #div(style="border-radius: 5px; background-color: #FCE15D; border-top: 12px solid #FCE15D;")
+  hr()
+}
+
+decide_button <- function(url = ""){
+  div(style="margin: auto;width: 100%;text-align: center;",
+      a("Give feedback and visit the DECIDE Recorder Tool", 
+        href=paste0("https://dwptwo-mydecide.datalabs.ceh.ac.uk?lat=",
+                    params$home_lat,
+                    "&lon=",
+                    params$home_lon,
+                    "&zoom=12&ds=3&score=true&suggestions=true"),
+        style ="font-size: 18px; color: #ffffff; font-weight: bold; text-decoration: none; border-radius: 5px; background-color: #F08444; border-top: 12px solid #F08444; border-bottom: 12px solid #F08444; border-right: 18px solid #F08444; border-left: 18px solid #F08444; display: inline-block;")
+    )
+}
+
 #doesn't seem to work specifying a custom css file so just put any css in here:
 ```
 
@@ -85,48 +104,23 @@ library(geosphere)#for distances between things
   margin-right: auto;
 }
 
-body{
-  font-family: Helvetica;
-  font-size: 14pt;
-}
-
-/*
-.dataStoryImage{
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
-  width: 80%;
-}
-*/
   
-  
-.button {
-  background-color: #F08444; /* Green */
-  border: none;
-  color: white;
-  padding: 12px;
-  text-align: center;
-  text-decoration: none;
-  display: inline-block;
-  font-size: 16px;
-  margin: 4px 2px;
-  cursor: pointer;
-  border-radius: 12px;
-  box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
-}
-
-hr {
-  background: linear-gradient(to right, #FCE15D, #35AA44);
-  height: 10px;
-  border-radius: 5px;
-  border: 0px
-}
-
 .center {
   margin: auto;
   width: 100%;
   text-align: center;
 }
+
+```
+
+
+```{r, eval = F,include = F}
+#discarded css
+
+# body{
+#   font-family: Helvetica;
+#   font-size: 14pt;
+# }
 
 ```
 
@@ -295,7 +289,7 @@ if(personalised){
 
 
 
-hr(style="background: linear-gradient(to right, #FCE15D, #35AA44);height: 10px; border-radius: 5px; border: 0px") #line across
+hr2()
 
 ```
 
@@ -450,16 +444,14 @@ if(params$data_story == 1){
     ylab(NULL)+ #define map and add marker
     theme_nothing()
   
-  #define the image as a ggplot
-  butterfly_image <- ggdraw() + draw_image(photo_url, scale = 0.9)
+  div(style="text-align:center;",
+    img(src=photo_url,width="288",height="288",style="object-fit:cover; display: block;margin-left: auto;  margin-right: auto;"),
+    p(em("Photo ",photo_attribution),style="font-size:10px;")
+  ) %>% print()
   
-  img(src=photo_url,class="circleimage",style="width:288px;height:288px;") %>% print()
-  p(em("Photo ",photo_attribution),style="font-size:10px;text-align:center;")
-  
-  #use {patchwork} to put it together side by side
-  #butterfly_image+ds1_map_plot
-  
+  cat('<div style = "text-align:center;">')
   ds1_map_plot %>% print()
+  cat("</div>")
   
   #lead text before button
   if(personalised){
@@ -469,17 +461,13 @@ if(params$data_story == 1){
   }
   
   #visit tool button
-  div(class="center",
-    a("Give feedback and visit the DECIDE Recorder Tool", 
-      href=paste0("https://decide.ceh.ac.uk/opts/scoremap/map?lat=",
+  decide_button(paste0("https://dwptwo-mydecide.datalabs.ceh.ac.uk?lat=",
                   top_visit$latitude,
                   "&lon=",
                   top_visit$longitude,
-                  "&score=true&popup=true&zoom=13&ds=1"),
-      class="button")
-  ) %>% print()
+                  "&score=true&popup=true&zoom=13&ds=1")) %>% print()
   
-  hr() #line across
+  hr2() #line across
 }
 ```
 
@@ -565,7 +553,7 @@ if(params$data_story == 2){
   # 
   if(personalised){
     
-    p("In the past 30 days you recorded in ", strong(nrow(all_records)) ,"different 100x100m locations and recorded a total of ",strong(n_species)," species across these sites. Records at these sites fill gaps in our understanding of species’ distributions. Here are the ",nrow(high_priority_records)," locations with the highest number of species you recorded.") %>% print()
+    p("In the past 30 days you recorded in ", strong(nrow(all_records)) ,"different 100x100m locations near you and recorded a total of ",strong(n_species)," species across these sites. Records at these sites fill gaps in our understanding of species’ distributions. Here are the ",nrow(high_priority_records)," locations with the highest number of species you recorded.") %>% print()
     
     # generate the map using ggspatial package
     ds2_map <- ggplot() +
@@ -592,13 +580,15 @@ if(params$data_story == 2){
       labs(x = NULL,y = NULL)+
       theme_nothing()
     
-    cat("<div class='dataStoryImage'>") # this isa way we can apply css to images that are plotted by putting them in the
+    cat("<div style = 'text-align:center;'>") # this isa way we can apply css to images that are plotted by putting them in the
     print(ds2_map)
     cat("</div>")
     
+    map_note <- paste0("You recorded ",high_priority_records$n_species[1]," species here")
+    
   } else {
     
-    p("In the past 30 days, online recorders recorded in ", strong(nrow(all_records)) ,"different 100x100m locations and recorded a total of ",strong(n_species)," species across these sites. Records at these sites fill gaps in our understanding of species’ distributions. Here are the ",nrow(high_priority_records)," locations with the highest number of species recorded.") %>% print()
+    p("In the past 30 days, online recorders recorded in ", strong(nrow(all_records)) ,"different 100x100m locations near you and recorded a total of ",strong(n_species)," species across these sites. Records at these sites fill gaps in our understanding of species’ distributions. Here are the ",nrow(high_priority_records)," locations with the highest number of species recorded.") %>% print()
     
     # generate the map using ggspatial package
     ds2_map <- ggplot() +
@@ -625,11 +615,11 @@ if(params$data_story == 2){
       labs(x = NULL,y = NULL)+
       theme_nothing()
     
-    cat("<div class='dataStoryImage'>") # this isa way we can apply css to images that are plotted by putting them in the
+    cat("<div style = 'text-align:center;'>") # this isa way we can apply css to images that are plotted by putting them in the
     print(ds2_map)
     cat("</div>")
     
-    
+    map_note <- paste0(high_priority_records$n_species[1]," species were recorded here")
     
   }
   
@@ -648,7 +638,7 @@ if(params$data_story == 2){
     layer_spatial(central_point_sf,col = "#35AA44",size = 5)+
     geom_spatial_label_repel(mapping = aes(central_point_long,
                                              central_point_lat,
-                                             label = paste0("A visited location")
+                                             label = paste0(map_note)
                                ),min.segment.length = 3)+
     fixed_plot_aspect() + 
     theme(axis.text.x=element_blank(), #remove x axis labels
@@ -661,22 +651,23 @@ if(params$data_story == 2){
           plot.caption = element_text(color = "#767675", face = "italic"))+ 
           labs(caption = "",y=NULL,x=NULL)+
         theme_nothing()
-          
+  
+  cat("<div style = 'text-align:center;'>")         
   print(ds2_map_2)
+  p(img(src="../images/ds2-legend.png")) %>% print()
+  cat("</div>")
   
   #vsit tool button
-  div(class="center",
-    a("Give feedback and visit the DECIDE Recorder Tool", 
-      href=paste0("https://decide.ceh.ac.uk/opts/scoremap/map?lat=",
+  decide_button(paste0("https://dwptwo-mydecide.datalabs.ceh.ac.uk?lat=",
                   central_point_lat,
                   "&lon=",
                   central_point_long,
-                  "&score=true&zoom=13&ds=2&suggestions=true"),
-      class="button")
-  ) %>% print()
+                  "&score=true&zoom=13&ds=2&suggestions=true")) %>% print()
   
   
-  hr() #line across
+  
+  
+  hr2() #line across
 }
 ```
 
@@ -745,24 +736,22 @@ if (params$data_story == 3){
       labs(x=NULL,y=NULL)
   }
   
+  cat('<div style = "text-align:center;">')
   print(ds3_map)
+  cat('</div>')
+  
   p(em("This month's records from the recording community"),style="font-size:10px;text-align:center;") %>% print()
   
   p("Join the recording community and find high DECIDE priority locations to visit.") %>% print()
   
   #vsit tool button
-  div(class="center",
-    a("Give feedback and visit the DECIDE Recorder Tool", 
-      href=paste0("https://decide.ceh.ac.uk/opts/scoremap/map?lat=",
+  decide_button(pasteo("https://dwptwo-mydecide.datalabs.ceh.ac.uk?lat=",
                   mean(range(individual_data_this_month$latitude)),
                   "&lon=",
                   mean(range(individual_data_this_month$longitude)),
-                  "&zoom=10&ds=3"),
-      class="button")
-  ) %>% print()
+                  "&zoom=10&ds=3")) %>% print()
   
-  
-  hr() #line across
+  hr2() #line across
 }
 ```
 
@@ -798,7 +787,6 @@ if(params$data_story == 4){
   
   decide_reputation_data$observed_by[decide_reputation_data$target_user] <- "same_person"
   
-  
   decide_reputation_data$recording_priority[is.nan(decide_reputation_data$recording_priority)] <- 0
   
   
@@ -819,7 +807,7 @@ if(params$data_story == 4){
   #affix a start and end rows so that the steps for the target user look correct
   extra_rows <- data.frame(
     grid_square = c("1","2"),
-    observed_on = as.Date(c(paste0(2022,"-04-01"),end_date)),
+    observed_on = as.Date(c(paste0(2022,"-04-01"),toString(end_date))),
     observed_by = "same_person",
     target_user = T,
     recording_priority = c(0,max_cumul_decide),
@@ -849,16 +837,17 @@ if(params$data_story == 4){
                     size = target_user,
                     alpha = target_user))+
       #scale_linetype_manual(values=c("dashed", "solid"))+
-      scale_color_manual(values=c('#999999','#F08444'))+
-      scale_size_manual(values=c(1, 3))+
+      scale_color_manual(values=c('#999999','#F08444'),labels = c("Impact of other recorders", "Your impact"))+
+      scale_size_manual(values=c(1, 3),guide ='none')+
       scale_alpha_manual(values = c(0.4, 0.8))+
       scale_x_date(breaks="month", labels=date_format("%b"))+
       xlab("")+
       ylim(0,y_max)+
       ylab("DECIDE impact score")+ 
       theme_minimal() +
-      theme(legend.position = "none",
-          plot.caption = element_text(color = "#767675", face = "italic"))+ 
+      theme(legend.position = c(0.05,1),
+          plot.caption = element_text(color = "#767675", face = "italic"),
+          legend.title = element_blank())+ 
           labs(caption = NULL)
     
   } else {
@@ -878,8 +867,11 @@ if(params$data_story == 4){
           labs(caption = NULL)
   }
   
+  cat('<div style = "text-align:center;">')
   print(ds4_plot)
-  p(em("The MyDECIDE impact score of recorders."),style="font-size:10px;text-align:center;")
+  cat('</div>')
+  
+  p(em("The MyDECIDE impact score of recorders."),style="font-size:10px;text-align:center;") %>% print()
   
   if(personalised){
     last_visit <- individual_data %>% arrange(-day,-month,-year) %>% head(1)
@@ -899,30 +891,23 @@ if(params$data_story == 4){
     p(paste0("Continue to build your impact by planning a visit near the last place you recorded: ",place_name," and consider going to a place that has a high priority for recording.")) %>% print()
     
     #vsit tool button
-    div(class="center",
-      a("Give feedback and visit the DECIDE Recorder Tool", 
-        href=paste0("https://decide.ceh.ac.uk/opts/scoremap/map?lat=",
+    decide_button(paste0("https://dwptwo-mydecide.datalabs.ceh.ac.uk?lat=",
                     individual_data_this_month %>% as.data.frame() %>% arrange(observed_on) %>% tail(1) %>% pull(latitude),
                     "&lon=",
                     individual_data_this_month %>% as.data.frame() %>% arrange(observed_on) %>% tail(1) %>% pull(longitude),
-                    "&zoom=13&ds=3&score=true&suggestions=true"),
-        class="button")
-    ) %>% print
+                    "&zoom=13&ds=3&score=true&suggestions=true")) %>% print()
+    
   } else {
     p("Continue to build your impact by planning a visit in the area you provided when you signed-up to MyDECIDE and consider going to a place that has a high priority for recording.") %>% print()
     
-    div(class="center",
-      a("Give feedback and visit the DECIDE Recorder Tool", 
-        href=paste0("https://decide.ceh.ac.uk/opts/scoremap/map?lat=",
+    decide_button(paste0("https://dwptwo-mydecide.datalabs.ceh.ac.uk?lat=",
                     params$home_lat,
                     "&lon=",
                     params$home_lon,
-                    "&zoom=12&ds=3&score=true&suggestions=true"),
-        class="button")
-    ) %>% print
+                    "&zoom=12&ds=3&score=true&suggestions=true")) %>% print()
   }
   
-  hr() #line across
+  hr2() #line across
 }
 
 ```
@@ -932,19 +917,15 @@ if(params$data_story == 4){
 if(params$data_story == 5){
   h3("Using the DECIDE Tool") %>% print()
   p("The DECIDE Tool displays maps showing places that are of greatest priority for new butterfly or moth records. These are locations where our Species Distribution Models are most uncertain of their predictions and where there has been little or no previous recording.") %>% print()
-  div(class="center", img(src="../images/decide_app_screenshot.png", class="dataStoryImage")) %>% print()
+  div(style="text-align:center;", img(src="../images/decide_app_screenshot.png", class="dataStoryImage")) %>% print()
   p("Where will your records be of most value in improving our models? Why not take a look at the DECIDE Tool to find out?") %>% print()
-  div(class="center",
-      a("Give feedback and visit the DECIDE Recorder Tool", 
-        href=paste0("https://decide.ceh.ac.uk/opts/scoremap/map?lat=",
+  decide_button(paste0("https://dwptwo-mydecide.datalabs.ceh.ac.uk?lat=",
                     params$home_lat,
                     "&lon=",
                     params$home_lon,
-                    "&zoom=12&ds=3&score=true&suggestions=true"),
-        class="button")
-    ) %>% print
+                    "&zoom=12&ds=3&score=true&suggestions=true")) %>% print()
   
-  hr() %>% print()
+  hr2() %>% print()
 }
 ```
 

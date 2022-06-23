@@ -16,9 +16,7 @@ library(rmarkdown)
 library(readr)
 library(fst)
 library(dplyr)
-
 library(sf)
-
 
 ```
 
@@ -26,10 +24,16 @@ Load the users:
 
 ```{r}
 #load dataframe
-user_db <- read_csv("data_personal/data-2022-06-06.csv")
+user_db <- read_csv("data_personal/data-2022-06-23.csv")
 names(user_db)[1] <- "user_id"
 
-user_db <- user_db %>% filter(name == "Simon")
+#for testing with g pigs
+#--
+g_pigs <- read.csv("data_personal/g_pigs.txt",header = F)[,1]
+
+user_db <- user_db %>% filter(email %in% g_pigs)
+#--
+
 
 #create a new column which will be used to store the file location of outputted email
 user_db$newsletter_file_location <- ""
@@ -83,7 +87,7 @@ For each user:
  
 ```{r}
 n_emails <- nrow(emails)
-n_emails <- 1 
+#n_emails <- 1 
 #to be looped
 #i <- 1
 
@@ -134,11 +138,10 @@ for (i in 1:n_emails){
                           ".html")
   
   emails$newsletter_file_location[i] <- render(
-    "newsletter_templates/v0_0_3.Rmd",
+    "newsletter_templates/v0_0_4.Rmd",
     output_file = out_file_name,
     params = markdown_params,
     output_options = list(self_contained=TRUE,output = "blastula::blastula_email")
-    
   )
 }
 
@@ -168,14 +171,13 @@ for (i in 1:n_emails){
   #send email
   smtp_send(email_obj,
             from = sender,
-            to = emails$email[i],
-            #to = "simon.p.rolph@gmail.com",
+            to = c(emails$email[i]),
             subject = "MyDECIDE",
             credentials = creds,
-            verbose = T
+            verbose = F
   )
   
-  Sys.sleep(10)
+  Sys.sleep(1)
 
 }
 
