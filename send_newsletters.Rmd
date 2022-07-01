@@ -21,67 +21,332 @@ library(sf)
 ```
 
 Load the users:
+`user_db`
 
 ```{r}
 #load dataframe
-user_db <- read_csv("data_personal/data-2022-06-23.csv")
+user_db <- read_csv("data_personal/data-2022-07-01.csv")
 names(user_db)[1] <- "user_id"
 
-#for testing with g pigs
-#--
-g_pigs <- read.csv("data_personal/g_pigs.txt",header = F)[,1]
+user_db$irecord_username <- gsub(" ","",user_db$irecord_username)
 
-user_db <- user_db %>% filter(email %in% g_pigs)
+#for testing gin pigs
 #--
+#g_pigs <- read.csv("data_personal/g_pigs.txt",header = F)[,1]
 
+#user_db <- user_db %>% filter(email %in% g_pigs)
+#--
 
 #create a new column which will be used to store the file location of outputted email
 user_db$newsletter_file_location <- ""
+```
 
-#for TESTING
-#all datastories
-all_data_stories <- expand.grid(personalised = c(T,F),ds =1:5)[1:9,]
+load latin square, users and their tracks, log of emails
 
-expand.grid.df <- function(...) Reduce(function(...) merge(..., by=NULL), list(...))
-emails <- expand.grid.df(all_data_stories,user_db)
-emails %>% View()
+```{r}
+latin_square <- read.csv("latin_square.csv",header = F)
+names(latin_square) <- paste0(1:9) 
+latin_square$track <- paste0("t",1:18)
+latin_square <- latin_square %>% tidyr::pivot_longer(cols =1:9)
+names(latin_square)[2:3] <- c("seq","ds_letter")
+latin_square$seq <- as.numeric(latin_square$seq)
 
-#don't make personalised emails for people who don't record online
-emails <- emails[emails$record_online | !emails$personalised,]
+user_tracks <- read.csv("data_personal/users_lookups.csv")
+email_log <- read.csv("data_personal/email_log.csv",header=T,sep=" ") %>% mutate(date = as.Date(date),
+                                                                uid=as.numeric(uid),
+                                                                data_story=as.character(data_story))
 
+#look-up table for data story type versus letter
+all_data_stories <- expand.grid(personalised = c(T,F),ds =1:5)[c(1:8,10),]
+all_data_stories$letter <- LETTERS[1:9]
 ```
 
 Step 0: build the records data dataframe
 
 
 ```{r}
-#note all the extra back slashes for escaping
-file_location <- "\\\\nerclactdb.adceh.ceh.ac.uk\\appdev\\appdev\\DECIDE\\data\\species_data\\data_cache\\butterfly"
 
-records <- list.files(file_location) %>%
-  paste(file_location,.,sep="\\") %>%
-  lapply(read_fst) %>%
-  bind_rows()
+if(F){
+  #note all the extra back slashes for escaping
+  #getting data from live server
+  file_location <- "\\\\nerclactdb.adceh.ceh.ac.uk\\appdev\\appdev\\DECIDE\\data\\species_data\\data_cache\\butterfly"
+  
+  #local verson of updated records (non-seasonal only)
+  file_location <- "../DECIDE-dynamic-dataflow/data/data_cache/butterfly"
+  
+  records <- list.files(file_location) %>%
+    paste(file_location,.,sep="\\") %>%
+    lapply(read_fst) %>%
+    lapply(function(x){x$user <- as.character(x$user); x}) %>%
+    bind_rows()
+  
+  glimpse(records)
+  
+  #get easting northings
+  records <- st_as_sf(records,coords = c('longitude', 'latitude'), crs = 4326)  #sf version
+  records[,c("longitude","latitude")] <- st_coordinates(records)
+  
+  records  <- records %>% st_transform(27700)
+  records[,c("easting","northing")] <- st_coordinates(records)
+  records <- st_drop_geometry(records)
+  
+  #get day/month/year columns
+  records$day <- records$observed_on %>% as.Date() %>% format(format = "%d")
+  records$month <- records$observed_on %>% as.Date() %>% format(format = "%m")
+  records$year <- records$observed_on %>% as.Date() %>% format(format = "%Y")
+  
+  
+  #convert inat user IDs to usernames
+  library(httr)
+  library(jsonlite)
+  if(F){
+    numbers_only <- function(x) !grepl("\\D", x)
+    inat_ids <- records %>% filter(platform=="iNaturalist") %>% pull(user) %>% unique()
+    for (i in 1:length(inat_ids)){
+      if(numbers_only(inat_ids[i])){
+        res <- GET(url = paste0("https://api.inaturalist.org/v1/users/",inat_ids[i]))
+        inatusername <- fromJSON(rawToChar(res$content))
+        inatusername <- inatusername$results$login_exact
+        
+        records$user[records$user == inat_ids[i]] <- inatusername 
+        
+        Sys.sleep(0.5)
+      }
+      print(i)
+    }
+  }
+  
+  if(F){
+    saveRDS(records,"data/species_records.RDS")
+  }
+}
 
-glimpse(records)
-
-#get easting northings
-records <- st_as_sf(records,coords = c('longitude', 'latitude'), crs = 4326)  #sf version
-records[,c("longitude","latitude")] <- st_coordinates(records)
-
-records  <- records %>% st_transform(27700)
-records[,c("easting","northing")] <- st_coordinates(records)
-records <- st_drop_geometry(records)
-
-#get day/month/year columns
-records$day <- records$observed_on %>% as.Date() %>% format(format = "%d")
-records$month <- records$observed_on %>% as.Date() %>% format(format = "%m")
-records$year <- records$observed_on %>% as.Date() %>% format(format = "%Y")
-
-saveRDS(records,"data/species_records.RDS")
 
 ```
 
+Top up with missing records
+
+```{r}
+if(F){
+  average_decide <- records$decide_score_all_time_pre %>% mean(na.rm = T)
+  
+  library(httr)
+  library(jsonlite)
+  library(curl)
+  source("functions/get_data.R")
+  source("functions/get_records.R")
+  
+  
+  #users which need iRecord records
+  start_date <- "2022-01-01"
+  end_date <- "2022-07-01"
+  
+  #users which need irecord records
+  irecord_usernames <- user_db$irecord_username %>% unique()
+  irecord_usernames <- irecord_usernames[!is.na(irecord_usernames)]
+  irecord_data <- data.frame()
+  
+  #loop through usernames and make API calls
+  for (i in 29:length(irecord_usernames)){
+    new_irecord_data <- get_records_irecord(irecord_usernames[i],1000,gsub("Â","",Sys.getenv("irecord_key")),start_date,end_date,raw=F)
+    if(nrow(new_irecord_data)>0){
+      new_irecord_data$user <- irecord_usernames[i]
+      irecord_data <- bind_rows(irecord_data,new_irecord_data)
+    }
+  }
+  
+  #users which need iSpot records
+  ispot_usernames <- user_db$ispot_username %>% unique()
+  ispot_usernames <- ispot_usernames[!is.na(ispot_usernames)]
+  ispot_data <- data.frame()
+  
+  #loop through usernames and make API calls
+  for (i in 1:length(ispot_usernames)){
+    new_ispot_data <- get_records_irecord(ispot_usernames[i],1000,gsub("Â","",Sys.getenv("irecord_key")),start_date,end_date)
+    if(nrow(new_ispot_data)>0){
+      new_ispot_data$user <- ispot_usernames[i]
+      ispot_data <- bind_rows(ispot_data,new_ispot_data)
+    }
+    
+    Sys.sleep(10)
+  }
+  
+  #filter to relevant species
+  species_list <- readRDS("data/species_list.RDS") %>% filter(group == "butterfly") %>% pull(species)
+  irecord_data <- filter(irecord_data, scientific_name %in% species_list)
+  ispot_data <- filter(ispot_data, scientific_name %in% species_list)
+  
+  new_data <- bind_rows(irecord_data,ispot_data) %>% select(scientific_name,latitude,longitude,observed_on,user,longitude,latitude) %>%
+    mutate(user = as.character(user))
+  
+  missing_records <- setdiff(new_data,records %>% select(scientific_name,latitude,longitude,observed_on,user,longitude,latitude))
+  
+  #get the decide score for the missing records
+  source("functions/get_decide_score.R")
+  for (i in 1:nrow(missing_records)){
+    score <- get_decide_score(missing_records$latitude[i],missing_records$longitude[i],"butterfly")
+    if(!is.null(score)){
+      missing_records$decide_score[i] <- score
+    } else {
+      missing_records$decide_score[i] <- average_decide
+    }
+    
+    Sys.sleep(0.01)
+    print(i)
+  }
+  
+  
+  missing_records <- missing_records %>% mutate(record_id = NA,
+                                                created_on = NA, 
+                                                platform = NA, 
+                                                days_old = NA,
+                                                days_since_2000 = NA,
+                                                group = "butterfly",
+                                                observed_month_num = NA,
+                                                decide_score_seasonal_pre = decide_score,
+                                                decide_score_all_time_pre = NA,
+                                                decide_score_seasonal_post = decide_score,
+                                                decide_score_all_time_post = NA) %>%
+    select(names(records)[1:16])
+    
+   
+  #save missing records
+  write_fst(missing_records,paste0("../DECIDE-dynamic-dataflow/data/data_cache/butterfly/top_up_records",round(runif(1)*10000000),".fst"))
+
+  records <- bind_rows(records,missing_records)
+}
+
+
+
+```
+
+Check whether the users have recorded in the last 30 days, or since 1st april (for data story 4).
+
+```{r}
+start_date <- Sys.Date()-30
+end_date <- Sys.Date()
+
+#load in data
+records_data <- readRDS("data/species_records.RDS")
+
+#get a list of users that recorded this year (for data story 4)
+thisyear <- records_data %>%
+    filter(observed_on > as.Date("2022-04-01")) %>%
+  pull(user) %>%
+  unique()
+
+#get a list of users that recorded in the past 30 days (for data stories 1-3)
+last30days <- records_data %>%
+    filter(observed_on < end_date,
+           observed_on > start_date) %>%
+  pull(user) %>%
+  unique()
+
+#create a new column that denotes whether each user in MyDECIDE has recorded in the past 30 days
+user_db$recorded_recently <- user_db$irecord_username %in% last30days | 
+  user_db$ispot_username %in% last30days |
+  user_db$inat_username %in% last30days
+
+#create a new column that denotes whether each user in MyDECIDE has recorded since 1/4/2022
+user_db$recorded_this_year <- user_db$irecord_username %in% thisyear | 
+  user_db$ispot_username %in% thisyear |
+  user_db$inat_username %in% thisyear
+
+View(user_db)
+
+```
+
+Define emails data frame
+
+```{r}
+#create the dataframe of emails that need to be sent
+emails <- user_db
+
+# identify what track each user is on
+emails <- left_join(emails,user_tracks)
+
+#new column for denoting which treatment is next
+emails$letter <-""
+
+# identify what the last email they received was
+last_emails <- email_log %>% 
+  group_by(uid) %>%
+  filter(date == max(date))
+
+#identify the next email for them
+for (i in 1:nrow(emails)){
+  #what user are we working out
+  user_uid <- emails$uid[i]
+  
+  #their track
+  track <- latin_square %>% filter(track ==emails$group[i])
+  
+  
+  #if they have been sent an email
+  if(user_uid %in% last_emails$uid){
+    #last email sent to them
+    last_email <- last_emails %>% filter(uid == user_uid) %>% pull(data_story)
+    
+    #position on track
+    track_position <- track %>% filter(ds_letter == last_email) %>% pull(seq)
+  } else { # if they haven't been sent an email  
+    track_position <- 0
+  }
+  
+  track$seq[track$seq<=track_position] <- track$seq[track$seq<=track_position]+9
+    
+  next_emails <- track %>% arrange(seq) %>% pull(ds_letter)
+  
+  
+  #which data stories do they have the data for?
+  if(!emails$recorded_recently[i]){
+    next_emails <- next_emails[!(next_emails %in% c("A","C","E"))];
+  }
+  
+  if(!emails$recorded_this_year[i]){
+    next_emails <- next_emails[next_emails != "G"]
+  }
+  
+  next_email <- first(next_emails)
+  
+  emails$letter[i] <- next_email 
+  
+  
+}
+
+emails <- left_join(emails,all_data_stories)
+
+View(emails)
+
+```
+
+
+
+
+
+```{r}
+# 
+# # #for TESTING
+# # #all datastories
+# # 
+# expand.grid.df <- function(...) Reduce(function(...) merge(..., by=NULL), list(...))
+# 
+# emails <- expand.grid.df(all_data_stories,user_db)
+# emails %>% View()
+# 
+# #don't make personalised emails for people who don't record online
+# emails <- emails[emails$record_online | !emails$personalised,]
+# 
+# #don't make personalised emails for people who didn't recorded recently
+# emails <- emails[emails$recorded_recently | !emails$personalised,]
+# 
+# emails$uid <- emails$user_id
+# 
+# 
+# #just me
+# #emails <- emails %>% filter(user_id == 4)
+
+```
 
 
 
@@ -97,9 +362,6 @@ n_emails <- nrow(emails)
 #n_emails <- 1 
 #to be looped
 #i <- 1
-
-start_date <- Sys.Date()-30
-end_date <- Sys.Date()
 
 for (i in 1:n_emails){
   #get all the markdown parameters into a list
@@ -117,8 +379,34 @@ for (i in 1:n_emails){
         home_lon = emails$home_lon[i],
         irecord_key      = gsub("Â","",Sys.getenv("irecord_key")),
         ispot_key        = Sys.getenv("ispot_key"),
-        data_story = as.numeric(emails$ds[i])
+        data_story = as.numeric(emails$ds[i]),
+        user_uuid = emails$uid[i],
+        letter = emails$letter[i]
     )
+  
+  
+  
+  #for testing purposes
+  # if(F){
+  #   markdown_params <- 
+  #     list(
+  #         name = "Simon",
+  #         irecord_username = 123953,
+  #         ispot_username = "",
+  #         inat_username = "",
+  #         start_date = "2022-06-01",
+  #         end_date =  "2022-06-28",
+  #         try_personalised = TRUE,
+  #         records_data_location = "data/species_records.RDS",
+  #         home_lat = 53.4,
+  #         home_lon = -1.5,
+  #         irecord_key      = gsub("Â","",Sys.getenv("irecord_key")),
+  #         ispot_key        = Sys.getenv("ispot_key"),
+  #         data_story = 4
+  #     )
+  #   
+  #     out_file_name <- "../newsletters/test.html"
+  # }
   
   #if any usernames are not there then set them to NA
   if (length(markdown_params$irecord_username)==0){markdown_params$irecord_username <- NA}
@@ -144,13 +432,26 @@ for (i in 1:n_emails){
                           markdown_params$data_story,
                           ".html")
   
+  
+  
   emails$newsletter_file_location[i] <- render(
-    "newsletter_templates/v0_0_4.Rmd",
+    "newsletter_templates/v0_0_6.Rmd",
     output_file = out_file_name,
     params = markdown_params,
-    output_options = list(self_contained=TRUE,output = "blastula::blastula_email")
+    output_options = list(self_contained=T,output = "blastula::blastula_email")
   )
+  
+  #potential way for pixel tracking but didn't work because blastula broke it
+  # linesread <- readLines("newsletters/2022-07-01/1_FALSE_1.html")
+  # linesread[linesread == "<td style=\"padding:12px;\"><p>PIXELREPLACE</p>"] <- '<td style=\"padding:12px;\"><img src="https://connect-apps.ceh.ac.uk/mydecide_pixel/pixel?log=1_B">'
+  # 
+  # writeLines(linesread,"newsletters/2022-07-01/1_FALSE_1.html")
+  
+  
+  
 }
+
+saveRDS(emails,"data_personal/emails.rds")
 
 
 ```
@@ -178,7 +479,8 @@ for (i in 1:n_emails){
   #send email
   smtp_send(email_obj,
             from = sender,
-            to = c(emails$email[i]),
+            #to = c(emails$email[i]),
+            to = "simrol@ceh.ac.uk",
             subject = "MyDECIDE -TEST VERSION",
             credentials = creds,
             verbose = F
@@ -187,6 +489,11 @@ for (i in 1:n_emails){
   Sys.sleep(1)
 
 }
+
+#record what emails have been sent
+email_log_append <- data.frame(uid = emails$uid, data_story = emails$letter, date = Sys.Date())
+email_log <- bind_rows(email_log,email_log_append)
+write.table(email_log,"data_personal/email_log.csv")
 
 ```
 

@@ -20,16 +20,17 @@ if(F){
   library(jsonlite)
   username <- "simonrolph"
   username <- "22727"
-  start_date <- "2021-06-26"
-  end_date <- "2021-06-26"
+  username <- "10806"
+  start_date <- "2010-01-01"
+  end_date <- "2022-06-24"
   
-  get_records_irecord(username,10,gsub("Â","",Sys.getenv("irecord_key")),start_date,end_date)
+  get_records_irecord(username,1000,gsub("Â","",Sys.getenv("irecord_key")),start_date,end_date)
 }
 
 
 
 
-get_records_irecord <- function(username,nrecords,secret,start_date,end_date){
+get_records_irecord <- function(username,nrecords,secret,start_date,end_date,raw=F){
   #remove spaces (because in iRecord it's presented as "111 111")
   username <- gsub(" ", "", username, fixed = TRUE)
   
@@ -76,6 +77,10 @@ get_records_irecord <- function(username,nrecords,secret,start_date,end_date){
   data_raw <- get_data(auth_header = auth_header,query = q1,URLbase=URLbase) # get the data
   data_raw <- data_raw$hits$hits$`_source`
   
+  if(raw){
+    return(data_raw)
+  }
+  
   #if no records found then return an empty data frame
   if (is.null(data_raw)){
     return(data.frame())
@@ -87,7 +92,7 @@ get_records_irecord <- function(username,nrecords,secret,start_date,end_date){
     longitude = data_raw$location$point,
     observed_on = data_raw$event$date_start,
     url = paste0("https://irecord.org.uk/record-details?occurrence_id=",data_raw$id),
-    image_url = paste0("https://warehouse1.indicia.org.uk/upload/med-",data_raw$occurrence$media[[1]]$path),
+    #image_url = paste0("https://warehouse1.indicia.org.uk/upload/med-",data_raw$occurrence$media[[1]]$path),
     confirmed = data_raw$identification$verification_status == "V"
   )
   

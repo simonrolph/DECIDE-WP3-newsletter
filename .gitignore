@@ -22,3 +22,8 @@ sign_up_app/data/*.csv
 data_personal
 data/species_records.RDS
 newsletter_templates/rosm.cache
+
+
+
+rosm.cache
+rsconnect
