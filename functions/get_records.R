@@ -64,6 +64,12 @@ get_records_irecord <- function(username,nrecords,secret,start_date,end_date,raw
                   "lte":"',end_date,'"
                 }
               }
+            },{
+              "range": {
+                "location.coordinate_uncertainty_in_meters":{
+                  "lte":"101"
+                }
+              }
             }
           ]
         }
@@ -115,7 +121,14 @@ get_records_ispot <- function(username,nrecords,key,start_date,end_date){
               startDate = start_date,
               end_date = end_date
             ))
-  data <- fromJSON(rawToChar(res$content))
+  data <- rawToChar(res$content)
+  
+  #if no observations for the specified user then return an empty data frame
+  if(grepl("Sorry",data)){
+    return(data.frame())
+  }
+  
+  data <- fromJSON(data)
   
   data <- data$Observations
   
@@ -168,7 +181,7 @@ get_inat_obs_user_tweaked <- function (username, maxresults = 100,queryextra)
                                       ping_path), query = ping_query)
   total_res <- as.numeric(ping$headers$`x-total-entries`)
   if (total_res == 0) {
-    stop("Your search returned zero results. Perhaps your user does not exist.")
+    return(data.frame())
   }
   page_query <- paste0("&per_page=200&page=1", queryextra)
   dat <- GET(base_url, path = paste0("observations/", 
@@ -182,7 +195,7 @@ get_inat_obs_user_tweaked <- function (username, maxresults = 100,queryextra)
                                          q_path), query = page_query)
       data_out <- rbind(data_out, read.csv(textConnection(content(dat, 
                                                                   as = "text"))))
-      Sys.sleep(0.1)
+      Sys.sleep(0.5)
     }
   }
   if (maxresults < dim(data_out)[1]) {
@@ -193,18 +206,23 @@ get_inat_obs_user_tweaked <- function (username, maxresults = 100,queryextra)
 
 # function for getting records called in the rmarkdown
 get_records_inat <- function(username,nrecords=100){
-  query_extra <- "&taxon_id=47157&acc_below=100&captive=false"
-  data <- get_inat_obs_user_tweaked(username,nrecords,query_extra)
   
-  data$confirmed <- data$quality_grade == "research"
-  
-  data[,c("scientific_name",
-          "latitude",
-          "longitude",
-          "observed_on",
-          "url",
-          "image_url",
-          "confirmed")]
+    query_extra <- "&taxon_id=47157&acc_below=100&captive=false"
+    data <- get_inat_obs_user_tweaked(username,nrecords,query_extra)
+    
+    if(nrow(data)>0){
+      data$confirmed <- data$quality_grade == "research"
+      
+      data <- data[,c("scientific_name",
+              "latitude",
+              "longitude",
+              "observed_on",
+              "url",
+              "image_url",
+              "confirmed")]
+    }
+    
+    return(data)
   
 }
 

@@ -97,6 +97,7 @@ ui <- fluidPage(
             tags$li("If you don’t submit butterfly records via online recording platforms, you can still sign up, but the information you receive in the emails will relate to general butterfly recording activity in your chosen area.")),
         p("In order to send you information about your records, we need to know your email address and your usernames on the biological recording platforms you use. Please complete the form below.")
     ),
+    p(strong("Please note that in order to sign up for MyDECIDE you will need to access your email (to get a confirmation code) without refreshing this webpage. Therefore, we recommend signing up on a computer rather than a mobile device.")),
     
     div(id = "identity_questions",
         hr(),

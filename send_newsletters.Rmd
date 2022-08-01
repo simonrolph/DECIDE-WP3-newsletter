@@ -17,6 +17,14 @@ library(readr)
 library(fst)
 library(dplyr)
 library(sf)
+library(httr)
+library(jsonlite)
+library(curl)
+
+library(terra) # for get_decide_score_local
+
+#for parallel rendering
+library(doParallel)
 
 ```
 
@@ -25,10 +33,12 @@ Load the users:
 
 ```{r}
 #load dataframe
-user_db <- read_csv("data_personal/data-2022-07-01.csv")
+user_db <- read_csv("data_personal/data-2022-07-21.csv")
 names(user_db)[1] <- "user_id"
 
+#remove spaces from irecord username
 user_db$irecord_username <- gsub(" ","",user_db$irecord_username)
+
 
 #for testing gin pigs
 #--
@@ -39,11 +49,14 @@ user_db$irecord_username <- gsub(" ","",user_db$irecord_username)
 
 #create a new column which will be used to store the file location of outputted email
 user_db$newsletter_file_location <- ""
+
+View(user_db)
 ```
 
 load latin square, users and their tracks, log of emails
 
 ```{r}
+#load in the latin square and refomrat to long format
 latin_square <- read.csv("latin_square.csv",header = F)
 names(latin_square) <- paste0(1:9) 
 latin_square$track <- paste0("t",1:18)
@@ -51,7 +64,8 @@ latin_square <- latin_square %>% tidyr::pivot_longer(cols =1:9)
 names(latin_square)[2:3] <- c("seq","ds_letter")
 latin_square$seq <- as.numeric(latin_square$seq)
 
-user_tracks <- read.csv("data_personal/users_lookups.csv")
+#load the user database which contains their email and what track (t1-t18) they're on
+user_tracks <- read.csv("data_personal/users_lookups.csv") %>% mutate(email = gsub(" ","",email))
 email_log <- read.csv("data_personal/email_log.csv",header=T,sep=" ") %>% mutate(date = as.Date(date),
                                                                 uid=as.numeric(uid),
                                                                 data_story=as.character(data_story))
@@ -65,62 +79,42 @@ Step 0: build the records data dataframe
 
 
 ```{r}
+#local verson of updated records (non-seasonal only)
+#this includes the non-seasonal backtracker records and the top-up records
+file_location <- "../DECIDE-dynamic-dataflow/data/data_cache/butterfly"
+files_from_local <- list.files(file_location) %>%
+  paste(file_location,.,sep="\\") 
 
-if(F){
-  #note all the extra back slashes for escaping
-  #getting data from live server
-  file_location <- "\\\\nerclactdb.adceh.ceh.ac.uk\\appdev\\appdev\\DECIDE\\data\\species_data\\data_cache\\butterfly"
-  
-  #local verson of updated records (non-seasonal only)
-  file_location <- "../DECIDE-dynamic-dataflow/data/data_cache/butterfly"
-  
-  records <- list.files(file_location) %>%
-    paste(file_location,.,sep="\\") %>%
-    lapply(read_fst) %>%
-    lapply(function(x){x$user <- as.character(x$user); x}) %>%
-    bind_rows()
-  
-  glimpse(records)
-  
-  #get easting northings
-  records <- st_as_sf(records,coords = c('longitude', 'latitude'), crs = 4326)  #sf version
-  records[,c("longitude","latitude")] <- st_coordinates(records)
-  
-  records  <- records %>% st_transform(27700)
-  records[,c("easting","northing")] <- st_coordinates(records)
-  records <- st_drop_geometry(records)
-  
-  #get day/month/year columns
-  records$day <- records$observed_on %>% as.Date() %>% format(format = "%d")
-  records$month <- records$observed_on %>% as.Date() %>% format(format = "%m")
-  records$year <- records$observed_on %>% as.Date() %>% format(format = "%Y")
-  
-  
-  #convert inat user IDs to usernames
-  library(httr)
-  library(jsonlite)
-  if(F){
-    numbers_only <- function(x) !grepl("\\D", x)
-    inat_ids <- records %>% filter(platform=="iNaturalist") %>% pull(user) %>% unique()
-    for (i in 1:length(inat_ids)){
-      if(numbers_only(inat_ids[i])){
-        res <- GET(url = paste0("https://api.inaturalist.org/v1/users/",inat_ids[i]))
-        inatusername <- fromJSON(rawToChar(res$content))
-        inatusername <- inatusername$results$login_exact
-        
-        records$user[records$user == inat_ids[i]] <- inatusername 
-        
-        Sys.sleep(0.5)
-      }
-      print(i)
-    }
-  }
-  
-  if(F){
-    saveRDS(records,"data/species_records.RDS")
-  }
-}
+#getting data from live server
+#note all the extra back slashes for escaping
+file_location_san <- "\\\\nerclactdb.adceh.ceh.ac.uk\\appdev\\appdev\\DECIDE\\data\\species_data\\data_cache\\butterfly"
+files_from_san <- list.files(file_location_san)[!(list.files(file_location_san) %in% list.files(file_location))] %>%
+  paste(file_location_san,.,sep="\\") 
 
+#load all the data and put it together into one dataframe
+records <- c(files_from_local,files_from_san) %>%
+  lapply(read_fst) %>%
+  lapply(function(x){x$user <- as.character(x$user); x}) %>%
+  bind_rows() %>% filter(!is.na(user))
+
+glimpse(records)
+
+#Format columns
+#get easting northings
+records <- st_as_sf(records,coords = c('longitude', 'latitude'), crs = 4326)  #sf version
+records[,c("longitude","latitude")] <- st_coordinates(records)
+
+records  <- records %>% st_transform(27700)
+records[,c("easting","northing")] <- st_coordinates(records)
+records <- st_drop_geometry(records)
+
+#get day/month/year columns
+records$day <- records$observed_on %>% as.Date() %>% format(format = "%d")
+records$month <- records$observed_on %>% as.Date() %>% format(format = "%m")
+records$year <- records$observed_on %>% as.Date() %>% format(format = "%Y")
+
+saveRDS(records,paste0("data/species_records_",Sys.Date(),".RDS"))
+saveRDS(records,paste0("data/species_records.RDS"))
 
 ```
 
@@ -129,32 +123,31 @@ Top up with missing records
 ```{r}
 if(F){
   average_decide <- records$decide_score_all_time_pre %>% mean(na.rm = T)
-  
-  library(httr)
-  library(jsonlite)
-  library(curl)
+
   source("functions/get_data.R")
   source("functions/get_records.R")
   
+  start_date <- "2022-04-01"
+  end_date <- "2022-07-22"
   
-  #users which need iRecord records
-  start_date <- "2022-01-01"
-  end_date <- "2022-07-01"
-  
+  #GET iRecord top up
   #users which need irecord records
   irecord_usernames <- user_db$irecord_username %>% unique()
   irecord_usernames <- irecord_usernames[!is.na(irecord_usernames)]
   irecord_data <- data.frame()
   
   #loop through usernames and make API calls
-  for (i in 29:length(irecord_usernames)){
+  for (i in 1:length(irecord_usernames)){
     new_irecord_data <- get_records_irecord(irecord_usernames[i],1000,gsub("Â","",Sys.getenv("irecord_key")),start_date,end_date,raw=F)
     if(nrow(new_irecord_data)>0){
       new_irecord_data$user <- irecord_usernames[i]
       irecord_data <- bind_rows(irecord_data,new_irecord_data)
     }
+    Sys.sleep(1)
+    print(paste0(i,"/",length(irecord_usernames)))
   }
   
+  #GET ispot top-up
   #users which need iSpot records
   ispot_usernames <- user_db$ispot_username %>% unique()
   ispot_usernames <- ispot_usernames[!is.na(ispot_usernames)]
@@ -162,40 +155,67 @@ if(F){
   
   #loop through usernames and make API calls
   for (i in 1:length(ispot_usernames)){
-    new_ispot_data <- get_records_irecord(ispot_usernames[i],1000,gsub("Â","",Sys.getenv("irecord_key")),start_date,end_date)
+    new_ispot_data <- get_records_ispot(ispot_usernames[i],1000,Sys.getenv("ispot_key"),start_date,end_date)
+    
     if(nrow(new_ispot_data)>0){
       new_ispot_data$user <- ispot_usernames[i]
       ispot_data <- bind_rows(ispot_data,new_ispot_data)
     }
     
-    Sys.sleep(10)
+    Sys.sleep(1)
   }
+  
+  #GET inat top-up
+  #users which need inat records
+  inat_usernames <- user_db$inat_username %>% unique()
+  inat_usernames <- inat_usernames[!is.na(inat_usernames)]
+  inat_data <- data.frame()
+  
+  #loop through usernames and make API calls
+  for (i in 54:length(inat_usernames)){
+    new_inat_data <- get_records_inat(inat_usernames[i],1000)
+    
+    if(nrow(new_inat_data)>0){
+      new_inat_data$user <- inat_usernames[i]
+      inat_data <- bind_rows(inat_data,new_inat_data)
+    }
+    
+    Sys.sleep(5)
+    print(i)
+  }
+  
   
   #filter to relevant species
   species_list <- readRDS("data/species_list.RDS") %>% filter(group == "butterfly") %>% pull(species)
-  irecord_data <- filter(irecord_data, scientific_name %in% species_list)
-  ispot_data <- filter(ispot_data, scientific_name %in% species_list)
-  
-  new_data <- bind_rows(irecord_data,ispot_data) %>% select(scientific_name,latitude,longitude,observed_on,user,longitude,latitude) %>%
+  new_data <- bind_rows(irecord_data,ispot_data,inat_data) %>%
+    unique() %>%
+    filter(scientific_name %in% species_list) %>%
+    select(scientific_name,latitude,longitude,observed_on,user,longitude,latitude) %>%
     mutate(user = as.character(user))
   
+  #which records are missing from the main data sets?
   missing_records <- setdiff(new_data,records %>% select(scientific_name,latitude,longitude,observed_on,user,longitude,latitude))
+  
+  nrow(missing_records)
   
   #get the decide score for the missing records
   source("functions/get_decide_score.R")
+  
+  
+  
   for (i in 1:nrow(missing_records)){
-    score <- get_decide_score(missing_records$latitude[i],missing_records$longitude[i],"butterfly")
+    score <- get_decide_score_local(missing_records$longitude[i],missing_records$latitude[i],"//nerclactdb.adceh.ceh.ac.uk/appdev/appdev/DECIDE/data/species_data/raster_decide_priority/butterfly_decide_raster_all_year.tif")
+    
     if(!is.null(score)){
       missing_records$decide_score[i] <- score
     } else {
       missing_records$decide_score[i] <- average_decide
     }
     
-    Sys.sleep(0.01)
     print(i)
   }
   
-  
+  #create matching columns for the main data frame
   missing_records <- missing_records %>% mutate(record_id = NA,
                                                 created_on = NA, 
                                                 platform = NA, 
@@ -212,8 +232,6 @@ if(F){
    
   #save missing records
   write_fst(missing_records,paste0("../DECIDE-dynamic-dataflow/data/data_cache/butterfly/top_up_records",round(runif(1)*10000000),".fst"))
-
-  records <- bind_rows(records,missing_records)
 }
 
 
@@ -227,7 +245,7 @@ start_date <- Sys.Date()-30
 end_date <- Sys.Date()
 
 #load in data
-records_data <- readRDS("data/species_records.RDS")
+records_data <- readRDS("data/species_records_2022-07-21.RDS")
 
 #get a list of users that recorded this year (for data story 4)
 thisyear <- records_data %>%
@@ -263,7 +281,7 @@ Define emails data frame
 emails <- user_db
 
 # identify what track each user is on
-emails <- left_join(emails,user_tracks)
+emails <- left_join(emails,user_tracks,by="email")
 
 #new column for denoting which treatment is next
 emails$letter <-""
@@ -271,7 +289,7 @@ emails$letter <-""
 # identify what the last email they received was
 last_emails <- email_log %>% 
   group_by(uid) %>%
-  filter(date == max(date))
+  filter(date == max(date)) %>% na.omit()
 
 #identify the next email for them
 for (i in 1:nrow(emails)){
@@ -280,7 +298,6 @@ for (i in 1:nrow(emails)){
   
   #their track
   track <- latin_square %>% filter(track ==emails$group[i])
-  
   
   #if they have been sent an email
   if(user_uid %in% last_emails$uid){
@@ -293,6 +310,7 @@ for (i in 1:nrow(emails)){
     track_position <- 0
   }
   
+  #loop around
   track$seq[track$seq<=track_position] <- track$seq[track$seq<=track_position]+9
     
   next_emails <- track %>% arrange(seq) %>% pull(ds_letter)
@@ -315,6 +333,9 @@ for (i in 1:nrow(emails)){
 }
 
 emails <- left_join(emails,all_data_stories)
+
+#remove unsubscribed users
+emails <- emails %>% filter(subscribed)
 
 View(emails)
 
@@ -358,11 +379,22 @@ For each user:
  
  
 ```{r}
+emails <- emails %>% arrange(user_id)
 n_emails <- nrow(emails)
 #n_emails <- 1 
 #to be looped
 #i <- 1
 
+#create a folder for the day's newsletters
+if(!dir.exists(paste0("newsletters/",Sys.Date()))){
+  dir.create(paste0("newsletters/",Sys.Date()))
+}
+
+markdown_params_list <- list()
+
+
+
+#make a list of lists of markdown params
 for (i in 1:n_emails){
   #get all the markdown parameters into a list
   markdown_params <- 
@@ -374,7 +406,7 @@ for (i in 1:n_emails){
         start_date = start_date,
         end_date =  end_date,
         try_personalised = emails$personalised[i],
-        records_data_location = "data/species_records.RDS",
+        records_data_location = "data/species_records_2022-07-21.RDS",
         home_lat = emails$home_lat[i],
         home_lon = emails$home_lon[i],
         irecord_key      = gsub("Â","",Sys.getenv("irecord_key")),
@@ -384,74 +416,94 @@ for (i in 1:n_emails){
         letter = emails$letter[i]
     )
   
-  
-  
-  #for testing purposes
-  # if(F){
-  #   markdown_params <- 
-  #     list(
-  #         name = "Simon",
-  #         irecord_username = 123953,
-  #         ispot_username = "",
-  #         inat_username = "",
-  #         start_date = "2022-06-01",
-  #         end_date =  "2022-06-28",
-  #         try_personalised = TRUE,
-  #         records_data_location = "data/species_records.RDS",
-  #         home_lat = 53.4,
-  #         home_lon = -1.5,
-  #         irecord_key      = gsub("Â","",Sys.getenv("irecord_key")),
-  #         ispot_key        = Sys.getenv("ispot_key"),
-  #         data_story = 4
-  #     )
-  #   
-  #     out_file_name <- "../newsletters/test.html"
-  # }
+  out_file_name <- paste0("../newsletters/",
+                        Sys.Date(),
+                        "/",
+                        emails$user_id[i],
+                        "_",
+                        markdown_params$try_personalised,
+                        "_",
+                        markdown_params$data_story,
+                        ".html")
   
   #if any usernames are not there then set them to NA
   if (length(markdown_params$irecord_username)==0){markdown_params$irecord_username <- NA}
   if (length(markdown_params$ispot_username)==0){markdown_params$ispot_username <- NA}
   if (length(markdown_params$inat_username)==0){markdown_params$inat_username <- NA}
   
-  
-  print("Generating newsletter")
-  
-  #create a folder for the day's newsletters
-  if(!dir.exists(paste0("newsletters/",Sys.Date()))){
-    dir.create(paste0("newsletters/",Sys.Date()))
-  }
-  
-  #render the newsletter
-  out_file_name <- paste0("../newsletters/",
-                          Sys.Date(),
-                          "/",
-                          emails$user_id[i],
-                          "_",
-                          markdown_params$try_personalised,
-                          "_",
-                          markdown_params$data_story,
-                          ".html")
-  
-  
-  
-  emails$newsletter_file_location[i] <- render(
-    "newsletter_templates/v0_0_6.Rmd",
-    output_file = out_file_name,
-    params = markdown_params,
-    output_options = list(self_contained=T,output = "blastula::blastula_email")
-  )
-  
-  #potential way for pixel tracking but didn't work because blastula broke it
-  # linesread <- readLines("newsletters/2022-07-01/1_FALSE_1.html")
-  # linesread[linesread == "<td style=\"padding:12px;\"><p>PIXELREPLACE</p>"] <- '<td style=\"padding:12px;\"><img src="https://connect-apps.ceh.ac.uk/mydecide_pixel/pixel?log=1_B">'
-  # 
-  # writeLines(linesread,"newsletters/2022-07-01/1_FALSE_1.html")
-  
-  
-  
+  markdown_params_list[[i]] <- list(out = out_file_name,params = markdown_params)
 }
 
-saveRDS(emails,"data_personal/emails.rds")
+saveRDS(markdown_params_list,"data_personal/markdown_params_list.rds")
+
+
+
+
+#ATTEMPTED parallalisation of rendering
+#solution from https://stackoverflow.com/questions/69365352/using-doparallel-with-rmarkdown
+make_report <- function(render_info) {
+  try({
+    file_name <- rmarkdown::render(input="newsletter_templates/v0_0_7.Rmd",
+                      output_file=render_info$out,
+                      params=render_info$params,
+                      output_options = list(self_contained=F,output = "blastula::blastula_email"),
+                      envir = new.env(),
+                      quiet=FALSE
+                      )
+  })
+  
+  file_name
+}
+
+#set up parallisation
+no_cores <- 4 
+cl <- makeCluster(no_cores)  
+registerDoParallel(cl)
+
+#render in parallel 
+foreach(render_info=markdown_params_list, .combine=c) %dopar% make_report(render_info)
+
+#finish parallel
+stopCluster(cl)
+
+  
+  
+#render a single newsletter
+# emails$newsletter_file_location[i] <- render(
+#   "newsletter_templates/v0_0_7.Rmd",
+#   output_file = markdown_params_list[[3]]$out,
+#   params = markdown_params_list[[3]]$params,
+#   output_options = list(self_contained=T,output = "blastula::blastula_email"),
+#   envir = new.env(),
+#   quiet=F
+# )
+  
+  
+  
+  
+  
+  
+  
+#potential way for pixel tracking but didn't work because blastula broke it
+# linesread <- readLines("newsletters/2022-07-01/1_FALSE_1.html")
+# linesread[linesread == "<td style=\"padding:12px;\"><p>PIXELREPLACE</p>"] <- '<td style=\"padding:12px;\"><img src="https://connect-apps.ceh.ac.uk/mydecide_pixel/pixel?log=1_B">'
+# 
+# writeLines(linesread,"newsletters/2022-07-01/1_FALSE_1.html")
+  
+  
+  
+
+
+
+emails <- emails %>% mutate(newsletter_file_location = paste0("C:/Users/simrol/Documents/R/DECIDE-WP3-newsletter/newsletters/2022-07-21/",uid,"_",personalised,"_",ds,".html"))
+
+
+emails <- emails[-109,]
+
+
+saveRDS(emails,"data_personal/emails_2022-07-21.rds")
+
+
 
 
 ```
@@ -462,35 +514,35 @@ for each user:
 Send emails
 
 ```{r}
-creds <- creds_envvar(user = "simrol@ceh.ac.uk",
-                          pass_envvar = "outlook_password",
-                          provider = "office365",
-                          use_ssl = T)
-
-for (i in 1:n_emails){
-  print(i)
-  
-  #define sender and recipient (could change this for testing, eg. set the recipient to your email to generate a batch of emails for different users but then see what they look like in your own inbox without spamming real users.)
-  sender <- "simrol@ceh.ac.uk" # obviously we want to change then in real use
-
-  # turn the rendered markdown into a blastula ready email object
-  email_obj <- blastula:::cid_images(emails$newsletter_file_location[i])
-
-  #send email
-  smtp_send(email_obj,
-            from = sender,
-            #to = c(emails$email[i]),
-            to = "simrol@ceh.ac.uk",
-            subject = "MyDECIDE -TEST VERSION",
-            credentials = creds,
-            verbose = F
-  )
-  
-  Sys.sleep(1)
-
-}
-
-#record what emails have been sent
+# creds <- creds_envvar(user = "simrol@ceh.ac.uk",
+#                           pass_envvar = "outlook_password",
+#                           provider = "office365",
+#                           use_ssl = T)
+# 
+# for (i in 1:n_emails){
+#   print(i)
+#   
+#   #define sender and recipient (could change this for testing, eg. set the recipient to your email to generate a batch of emails for different users but then see what they look like in your own inbox without spamming real users.)
+#   sender <- "simrol@ceh.ac.uk" # obviously we want to change then in real use
+# 
+#   # turn the rendered markdown into a blastula ready email object
+#   email_obj <- blastula:::cid_images(emails$newsletter_file_location[i])
+# 
+#   #send email
+#   smtp_send(email_obj,
+#             from = sender,
+#             #to = c(emails$email[i]),
+#             to = "simrol@ceh.ac.uk",
+#             subject = "MyDECIDE -TEST VERSION",
+#             credentials = creds,
+#             verbose = F
+#   )
+#   
+#   Sys.sleep(1)
+# 
+# }
+# 
+# #record what emails have been sent
 email_log_append <- data.frame(uid = emails$uid, data_story = emails$letter, date = Sys.Date())
 email_log <- bind_rows(email_log,email_log_append)
 write.table(email_log,"data_personal/email_log.csv")

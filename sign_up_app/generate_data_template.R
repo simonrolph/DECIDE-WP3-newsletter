@@ -18,7 +18,7 @@ df <- df[-1,]
 
 
 library(readr)
-df2 <- read_csv("data/data-2022-06-08.csv",
+df2 <- read_csv("data/data-2022-07-21.csv",
                col_types = cols(...1 = col_skip(), 
                                 subscribed_on = col_date(format = "%d/%m/%Y"),
                                 unsubscribed_on = col_date(format = "%d/%m/%Y"),

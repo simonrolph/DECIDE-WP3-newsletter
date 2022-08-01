@@ -26,3 +26,11 @@ get_decide_score <- function(lat,lon,name){
   data$score
 }
 
+#requires raster
+get_decide_score_local <- function(lon,lat,file_path_to_raster){
+  point <- st_point(c(lon,lat))
+  point <- st_sfc(point,crs = 4326) %>% st_transform(27700) %>% st_coordinates()
+  
+  extract(rast(file_path_to_raster),point)[[1]] %>% as.numeric()
+}
+
