@@ -14,8 +14,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(blastula)
+library(magrittr)
 
-creds <- creds_anonymous(host = "smtp.nerc-lancaster.ac.uk",port=25,use_ssl = T)
+#creds <- creds_anonymous(host = "smtp.nerc-lancaster.ac.uk",port=25,use_ssl = T)
 
 emails <- readRDS("data_personal/emails_2022-07-21.rds")
 
@@ -24,39 +25,57 @@ for (i in 1:nrow(emails)){
   emails$newsletter_file_location[i] <- gsub("C:/Users/simrol/Documents/R/DECIDE-WP3-newsletter/","", emails$newsletter_file_location[i])
 }
 
+n_errors <- 0
+errors_i <- NULL
+
 #loop through each email and send it
 for (i in 1:nrow(emails)){
-  print(i)
+  #print(i)
   
   #define sender and recipient (could change this for testing, eg. set the recipient to your email to generate a batch of emails for different users but then see what they look like in your own inbox without spamming real users.)
   sender <- "DECIDE@ceh.ac.uk" # obviously we want to change then in real use
   
   if(file.exists(emails$newsletter_file_location[i])){
 
+    #identity check (does the name of the person appear in the email content)
+    #print("identity check: ")
+    identity_check <- readLines(emails$newsletter_file_location[i]) %>% paste0(collapse="") %>% grepl(emails$name[i],.)
+    print(identity_check)
+    
+    if(!identity_check){
+      
+      print(i)
+      n_errors <- n_errors+1
+      errors_i <- c(errors_i,i)
+    }
+
     # turn the rendered markdown into a blastula ready email object
-    email_obj <- blastula:::cid_images(emails$newsletter_file_location[i])
+    #email_obj <- blastula:::cid_images(emails$newsletter_file_location[i])
   
     
-    print("sending to: ")
-    print(c(emails$email[i]))
+    #print("sending to: ")
+    #print(c(emails$email[i]))
     
     #send email
-    smtp_send(email_obj,
-              from = sender,
-              to = c(emails$email[i]),
-              #to = "simrol@ceh.ac.uk",
-              subject = "MyDECIDE",
-              credentials = creds,
-              verbose = F
-    )
+    # smtp_send(email_obj,
+    #           from = sender,
+    #           to = c(emails$email[i]),
+    #           #to = "simrol@ceh.ac.uk",
+    #           subject = "MyDECIDE",
+    #           credentials = creds,
+    #           verbose = F
+    # )
     
     
-    Sys.sleep(0.1)
+    #Sys.sleep(0.1)
   } else {
     print("file not found")
   }
 
 }
+
+
+n_errors
 
 
 

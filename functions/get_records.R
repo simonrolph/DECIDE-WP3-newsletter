@@ -133,8 +133,8 @@ get_records_ispot <- function(username,nrecords,key,start_date,end_date){
   data <- data$Observations
   
   #get lat and long from the geospatial column
-  data$latitude <- data$Geospatial["Latitude"] %>% as.character() %>% as.numeric()
-  data$longitude <- data$Geospatial["Longitude"] %>% as.character() %>% as.numeric()
+  data$latitude <- data$Geospatial["Latitude"] 
+  data$longitude <- data$Geospatial["Longitude"]
   
   #get the standard column names
   data <- data %>%

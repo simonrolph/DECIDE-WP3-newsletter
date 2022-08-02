@@ -3,12 +3,13 @@ title: Sending DECIDE Monthly Newsletters
 output: html_document
 ---
 
+## Set up
 
 This R script is a simple way of sending emails out in bulk, it gets the list of users from a csv, builds a dataframe (step 0), generates email content for all users (step 1). Then it goes through all the users again and sends the emails (step 2).
 
 This is set up as a markdown document so that it could in theory be run on a schedule on Rstudio: https://docs.rstudio.com/connect/user/scheduling/ connect.
 
-Initial set up, packages, credentials for email / google sheets:
+Initial set up, packages
 
 ```{r}
 library(blastula)
@@ -26,57 +27,48 @@ library(terra) # for get_decide_score_local
 #for parallel rendering
 library(doParallel)
 
+#the 30 day period
+start_date <- Sys.Date()-30
+end_date <- Sys.Date()
+
+#create a folder for the day's newsletters
+if(!dir.exists(paste0("newsletters/",Sys.Date()))){
+  dir.create(paste0("newsletters/",Sys.Date()))
+}
+
+
 ```
 
-Load the users:
-`user_db`
+## Step 0:
+
+Go to the MyDECIDE sign-up app and download the latest set of users. Save this file in `data_personal`. Update the line in the next code chunk to reflect this.
+
+Open `data-personal/users_lookups.csv` in Excel, add new users from the file downloaded from the sign-up portal and assign user tracks (t1-18).
+
+## Step 1: Generate the records data frame
+
+### Load users
+
+Load in the users from a file downloaded from the sign-up app.
 
 ```{r}
 #load dataframe
-user_db <- read_csv("data_personal/data-2022-07-21.csv")
+user_db <- read_csv("data_personal/data-2022-07-21.csv") #<-- update this to be the latest set of users
 names(user_db)[1] <- "user_id"
 
 #remove spaces from irecord username
 user_db$irecord_username <- gsub(" ","",user_db$irecord_username)
 
-
-#for testing gin pigs
-#--
-#g_pigs <- read.csv("data_personal/g_pigs.txt",header = F)[,1]
-
-#user_db <- user_db %>% filter(email %in% g_pigs)
-#--
-
 #create a new column which will be used to store the file location of outputted email
 user_db$newsletter_file_location <- ""
 
+#View the data frame
 View(user_db)
 ```
 
-load latin square, users and their tracks, log of emails
+### Build records data frame
 
-```{r}
-#load in the latin square and refomrat to long format
-latin_square <- read.csv("latin_square.csv",header = F)
-names(latin_square) <- paste0(1:9) 
-latin_square$track <- paste0("t",1:18)
-latin_square <- latin_square %>% tidyr::pivot_longer(cols =1:9)
-names(latin_square)[2:3] <- c("seq","ds_letter")
-latin_square$seq <- as.numeric(latin_square$seq)
-
-#load the user database which contains their email and what track (t1-t18) they're on
-user_tracks <- read.csv("data_personal/users_lookups.csv") %>% mutate(email = gsub(" ","",email))
-email_log <- read.csv("data_personal/email_log.csv",header=T,sep=" ") %>% mutate(date = as.Date(date),
-                                                                uid=as.numeric(uid),
-                                                                data_story=as.character(data_story))
-
-#look-up table for data story type versus letter
-all_data_stories <- expand.grid(personalised = c(T,F),ds =1:5)[c(1:8,10),]
-all_data_stories$letter <- LETTERS[1:9]
-```
-
-Step 0: build the records data dataframe
-
+Build the records data from the data on the SAN created by the daily data collector. This produces a big data frame with records, their locations, who recorded them and their DECIDE score
 
 ```{r}
 #local verson of updated records (non-seasonal only)
@@ -100,6 +92,7 @@ records <- c(files_from_local,files_from_san) %>%
 glimpse(records)
 
 #Format columns
+
 #get easting northings
 records <- st_as_sf(records,coords = c('longitude', 'latitude'), crs = 4326)  #sf version
 records[,c("longitude","latitude")] <- st_coordinates(records)
@@ -113,12 +106,17 @@ records$day <- records$observed_on %>% as.Date() %>% format(format = "%d")
 records$month <- records$observed_on %>% as.Date() %>% format(format = "%m")
 records$year <- records$observed_on %>% as.Date() %>% format(format = "%Y")
 
+#save data
 saveRDS(records,paste0("data/species_records_",Sys.Date(),".RDS"))
 saveRDS(records,paste0("data/species_records.RDS"))
 
 ```
 
-Top up with missing records
+### 'Top-up' records to fill gaps
+
+Due to an unknown error, the data collector doesn't seem to get all the records, although it is much better than when it was first operating. Therefore we need to manually go through each user to get their records. This is then compiled for each recording platform, combined, DECIDE score retrieved and saved to a .fst with a random number appended. This is wrapped in a `if(F){}` because it is an optional step but makes sure no records have been missed and therefore opportunity to send a personalised email isn't missed.
+
+This is assuming that you are running this chunk directly after the previous chunk so that the `records` object is already loaded into the environment.
 
 ```{r}
 if(F){
@@ -127,8 +125,7 @@ if(F){
   source("functions/get_data.R")
   source("functions/get_records.R")
   
-  start_date <- "2022-04-01"
-  end_date <- "2022-07-22"
+  start_date_top_up <- as.Date("2022-04-01")
   
   #GET iRecord top up
   #users which need irecord records
@@ -138,13 +135,14 @@ if(F){
   
   #loop through usernames and make API calls
   for (i in 1:length(irecord_usernames)){
-    new_irecord_data <- get_records_irecord(irecord_usernames[i],1000,gsub("Â","",Sys.getenv("irecord_key")),start_date,end_date,raw=F)
+    new_irecord_data <- get_records_irecord(irecord_usernames[i],1000,gsub("Â","",Sys.getenv("irecord_key")),start_date_top_up,end_date,raw=F)
     if(nrow(new_irecord_data)>0){
       new_irecord_data$user <- irecord_usernames[i]
       irecord_data <- bind_rows(irecord_data,new_irecord_data)
     }
-    Sys.sleep(1)
+    
     print(paste0(i,"/",length(irecord_usernames)))
+    Sys.sleep(1)
   }
   
   #GET ispot top-up
@@ -155,14 +153,15 @@ if(F){
   
   #loop through usernames and make API calls
   for (i in 1:length(ispot_usernames)){
-    new_ispot_data <- get_records_ispot(ispot_usernames[i],1000,Sys.getenv("ispot_key"),start_date,end_date)
+    new_ispot_data <- get_records_ispot(ispot_usernames[i],1000,Sys.getenv("ispot_key"),start_date_top_up,end_date)
     
     if(nrow(new_ispot_data)>0){
       new_ispot_data$user <- ispot_usernames[i]
       ispot_data <- bind_rows(ispot_data,new_ispot_data)
     }
     
-    Sys.sleep(1)
+    print(paste0(i,"/",length(ispot_usernames)))
+    Sys.sleep(5)
   }
   
   #GET inat top-up
@@ -172,7 +171,7 @@ if(F){
   inat_data <- data.frame()
   
   #loop through usernames and make API calls
-  for (i in 54:length(inat_usernames)){
+  for (i in 1:length(inat_usernames)){
     new_inat_data <- get_records_inat(inat_usernames[i],1000)
     
     if(nrow(new_inat_data)>0){
@@ -180,13 +179,15 @@ if(F){
       inat_data <- bind_rows(inat_data,new_inat_data)
     }
     
+    print(paste0(i,"/",length(inat_usernames)))
     Sys.sleep(5)
-    print(i)
   }
   
   
   #filter to relevant species
   species_list <- readRDS("data/species_list.RDS") %>% filter(group == "butterfly") %>% pull(species)
+  
+  #combine data from different sources
   new_data <- bind_rows(irecord_data,ispot_data,inat_data) %>%
     unique() %>%
     filter(scientific_name %in% species_list) %>%
@@ -202,7 +203,7 @@ if(F){
   source("functions/get_decide_score.R")
   
   
-  
+  #get decide score for the missing records
   for (i in 1:nrow(missing_records)){
     score <- get_decide_score_local(missing_records$longitude[i],missing_records$latitude[i],"//nerclactdb.adceh.ceh.ac.uk/appdev/appdev/DECIDE/data/species_data/raster_decide_priority/butterfly_decide_raster_all_year.tif")
     
@@ -234,15 +235,64 @@ if(F){
   write_fst(missing_records,paste0("../DECIDE-dynamic-dataflow/data/data_cache/butterfly/top_up_records",round(runif(1)*10000000),".fst"))
 }
 
+#Then go back and run the previous chunk to compile the big dataset
+
 
 
 ```
 
-Check whether the users have recorded in the last 30 days, or since 1st april (for data story 4).
+## Step 2: Determine what email to send to users
+
+### Load data
+
+Using the mass records dataframe (`records`), the latin square (`latin_square`) formulation and a dataframe of what track each user is on (`user_tracks`) we determine which email they should receive next given what they have already received `email_log`
 
 ```{r}
-start_date <- Sys.Date()-30
-end_date <- Sys.Date()
+#look-up table for data story type versus letter
+all_data_stories <- expand.grid(personalised = c(T,F),ds =1:5)[c(1:8,10),]
+all_data_stories$letter <- LETTERS[1:9]
+
+#load in the latin square and refomrat to long format
+latin_square <- read.csv("latin_square.csv",header = F)
+names(latin_square) <- paste0(1:9) 
+latin_square$track <- paste0("t",1:18)
+latin_square <- latin_square %>% tidyr::pivot_longer(cols =1:9)
+names(latin_square)[2:3] <- c("seq","ds_letter")
+latin_square$seq <- as.numeric(latin_square$seq)
+
+#load the user database which contains their email and what track (t1-t18) they're on
+user_tracks <- read.csv("data_personal/users_lookups.csv") %>% mutate(email = gsub(" ","",email))
+
+
+#build email log from the rendered files
+sent_emails <- data.frame(uid=0,personalised=F,ds="1")[-1,]
+past_news_dates <- list.files("newsletters")
+for(date_folder in past_news_dates){
+  sent_emails_i <- list.files(paste0("newsletters/",date_folder)) %>% 
+    read.table(text = .,sep = "_",as.is=T) 
+  names(sent_emails_i) <- c("uid","personalised", "ds")
+  
+  sent_emails_i <- sent_emails_i %>% mutate(ds = gsub(".html","",ds))
+  sent_emails_i$date <- as.Date(date_folder)
+  sent_emails <- bind_rows(sent_emails,sent_emails_i)
+}
+
+sent_emails <- mutate(sent_emails, 
+                      uid = as.numeric(uid),
+                      ds = as.numeric(ds)) %>% 
+  arrange(uid) %>% 
+  left_join(all_data_stories)
+
+email_log <- sent_emails %>% rename(data_story = letter)
+
+
+```
+
+### 'Potential to personalise' checks
+
+Check whether the users have recorded in the last 30 days, or since 1st april 2022 (for data story 4).
+
+```{r}
 
 #load in data
 records_data <- readRDS("data/species_records_2022-07-21.RDS")
@@ -274,7 +324,9 @@ View(user_db)
 
 ```
 
-Define emails data frame
+### Build the `emails` dataframe which outlines who is going to get what
+
+This dataframe is built from the `user_db` combined with information in the `email_log` and the latin square / user tracks.
 
 ```{r}
 #create the dataframe of emails that need to be sent
@@ -341,58 +393,16 @@ View(emails)
 
 ```
 
+### Export information for the newsletter generator script
 
-
-
-
-```{r}
-# 
-# # #for TESTING
-# # #all datastories
-# # 
-# expand.grid.df <- function(...) Reduce(function(...) merge(..., by=NULL), list(...))
-# 
-# emails <- expand.grid.df(all_data_stories,user_db)
-# emails %>% View()
-# 
-# #don't make personalised emails for people who don't record online
-# emails <- emails[emails$record_online | !emails$personalised,]
-# 
-# #don't make personalised emails for people who didn't recorded recently
-# emails <- emails[emails$recorded_recently | !emails$personalised,]
-# 
-# emails$uid <- emails$user_id
-# 
-# 
-# #just me
-# #emails <- emails %>% filter(user_id == 4)
-
-```
-
-
-
-Step 1: generate the newsletters
-
-For each user:
- * create newsletter
- * save outputs
- 
+Here we're looping through each user and making a nested list object that contains the name of the file for when the html is rendered and the markdown parameters in a list.
  
 ```{r}
 emails <- emails %>% arrange(user_id)
 n_emails <- nrow(emails)
-#n_emails <- 1 
-#to be looped
-#i <- 1
 
-#create a folder for the day's newsletters
-if(!dir.exists(paste0("newsletters/",Sys.Date()))){
-  dir.create(paste0("newsletters/",Sys.Date()))
-}
 
 markdown_params_list <- list()
-
-
 
 #make a list of lists of markdown params
 for (i in 1:n_emails){
@@ -434,120 +444,27 @@ for (i in 1:n_emails){
   markdown_params_list[[i]] <- list(out = out_file_name,params = markdown_params)
 }
 
+#save the emails data frame which is used when dispatching emails
+emails <- emails %>% mutate(newsletter_file_location = paste0("C:/Users/simrol/Documents/R/DECIDE-WP3-newsletter/newsletters/",end_date,"/",uid,"_",personalised,"_",ds,".html"))
+
+#save this for reference
+saveRDS(emails,paste0("data_personal/emails_",end_date,".rds"))
+
+#save the params list - this is needed for the next stage!
 saveRDS(markdown_params_list,"data_personal/markdown_params_list.rds")
 
-
-
-
-#ATTEMPTED parallalisation of rendering
-#solution from https://stackoverflow.com/questions/69365352/using-doparallel-with-rmarkdown
-make_report <- function(render_info) {
-  try({
-    file_name <- rmarkdown::render(input="newsletter_templates/v0_0_7.Rmd",
-                      output_file=render_info$out,
-                      params=render_info$params,
-                      output_options = list(self_contained=F,output = "blastula::blastula_email"),
-                      envir = new.env(),
-                      quiet=FALSE
-                      )
-  })
-  
-  file_name
-}
-
-#set up parallisation
-no_cores <- 4 
-cl <- makeCluster(no_cores)  
-registerDoParallel(cl)
-
-#render in parallel 
-foreach(render_info=markdown_params_list, .combine=c) %dopar% make_report(render_info)
-
-#finish parallel
-stopCluster(cl)
-
-  
-  
-#render a single newsletter
-# emails$newsletter_file_location[i] <- render(
-#   "newsletter_templates/v0_0_7.Rmd",
-#   output_file = markdown_params_list[[3]]$out,
-#   params = markdown_params_list[[3]]$params,
-#   output_options = list(self_contained=T,output = "blastula::blastula_email"),
-#   envir = new.env(),
-#   quiet=F
-# )
-  
-  
-  
-  
-  
-  
-  
-#potential way for pixel tracking but didn't work because blastula broke it
-# linesread <- readLines("newsletters/2022-07-01/1_FALSE_1.html")
-# linesread[linesread == "<td style=\"padding:12px;\"><p>PIXELREPLACE</p>"] <- '<td style=\"padding:12px;\"><img src="https://connect-apps.ceh.ac.uk/mydecide_pixel/pixel?log=1_B">'
-# 
-# writeLines(linesread,"newsletters/2022-07-01/1_FALSE_1.html")
-  
-  
-  
-
-
-
-emails <- emails %>% mutate(newsletter_file_location = paste0("C:/Users/simrol/Documents/R/DECIDE-WP3-newsletter/newsletters/2022-07-21/",uid,"_",personalised,"_",ds,".html"))
-
-
-emails <- emails[-109,]
-
-
-saveRDS(emails,"data_personal/emails_2022-07-21.rds")
-
-
-
-
 ```
 
-Step 2: send the pre-generated templates out to everyone.
-
-for each user:
-Send emails
+Tests
 
 ```{r}
-# creds <- creds_envvar(user = "simrol@ceh.ac.uk",
-#                           pass_envvar = "outlook_password",
-#                           provider = "office365",
-#                           use_ssl = T)
-# 
-# for (i in 1:n_emails){
-#   print(i)
-#   
-#   #define sender and recipient (could change this for testing, eg. set the recipient to your email to generate a batch of emails for different users but then see what they look like in your own inbox without spamming real users.)
-#   sender <- "simrol@ceh.ac.uk" # obviously we want to change then in real use
-# 
-#   # turn the rendered markdown into a blastula ready email object
-#   email_obj <- blastula:::cid_images(emails$newsletter_file_location[i])
-# 
-#   #send email
-#   smtp_send(email_obj,
-#             from = sender,
-#             #to = c(emails$email[i]),
-#             to = "simrol@ceh.ac.uk",
-#             subject = "MyDECIDE -TEST VERSION",
-#             credentials = creds,
-#             verbose = F
-#   )
-#   
-#   Sys.sleep(1)
-# 
-# }
-# 
-# #record what emails have been sent
-email_log_append <- data.frame(uid = emails$uid, data_story = emails$letter, date = Sys.Date())
-email_log <- bind_rows(email_log,email_log_append)
-write.table(email_log,"data_personal/email_log.csv")
+
+
 
 ```
+
+
+The next stage is delivered with `render_newsletter_job`
 
 
 

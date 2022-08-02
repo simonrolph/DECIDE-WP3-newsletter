@@ -1,5 +1,6 @@
 library(rmarkdown)
 library(tictoc)
+library(blastula)
 
 #number of jobs we're splitting it into
 jobs <- 2
@@ -34,6 +35,11 @@ for (i in 1:length(markdown_params_list)){
   } else {
     print("File already made, skipping")
   }
+  
+  #check
+  identity_check <- readLines(markdown_params_list[[i]]$out) %>% paste0(collapse="") %>% grepl(markdown_params_list[[i]]$params$name,.)
+  
+  
   
   print(i)
   
