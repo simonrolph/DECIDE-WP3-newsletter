@@ -5,15 +5,20 @@ i <- as.numeric(i)
 library(rmarkdown)
 library(blastula)
 
-#create a folder for the day's newsletters
-if(!dir.exists(paste0("newsletters/",Sys.Date()))){
-  dir.create(paste0("newsletters/",Sys.Date()))
-}
 
 markdown_params_list <- readRDS("data_personal/markdown_params_list.rds")
 
+#create a folder for the day's newsletters
+newsletter_date <- strsplit(markdown_params_list[[i]]$out,"/")[[1]][3]
+if(!dir.exists(paste0("newsletters/",newsletter_date))){
+  dir.create(paste0("newsletters/",newsletter_date))
+}
+
+
 print("FILE SAVING TO:")
 print(markdown_params_list[[i]]$out)
+
+start_time <- Sys.time()
   
 print("RENDERING FILE:")
 render(
@@ -24,5 +29,8 @@ render(
   envir = new.env(),
   quiet=F
 )
+
+print("TIME TAKEN:")
+print( Sys.time()-start_time)
 
 print("END OF SCRIPT")
