@@ -37,12 +37,12 @@ end_date   <- as.Date(params$end_date)
 library(dplyr) #data manipulation
 library(ggplot2) #plotting
 library(sf) #spatial processing
-library(ggspatial) # for plotting static maps
+library(ggspatial) # for plotting static maps # NOT in jasr
 library(spData)
-library(OpenStreetMap)
-library(nominatimlite) # for getting place names
+library(OpenStreetMap) # NOT in jasr
+library(nominatimlite) # for getting place names #NOT in jasr
 library(htmltools) #for functions like HTML(), h3(), p() etc.
-library(blastula) # for the blastula::blastula_email format defined in the yaml - at least need to have it installed if not actually loaded
+library(blastula) # for the blastula::blastula_email format defined in the yaml - at least need to have it installed if not actually loaded # NOT in jasr
 
 #for api requests:
 library(jsonlite)
@@ -59,7 +59,7 @@ library(lwgeom)
 
 #ecological traits
 library(readr)
-ecological_traits <- read_csv("~/R/DECIDE-WP3-newsletter/data/ecological_traits.csv", 
+ecological_traits <- read_csv("../data/ecological_traits.csv", 
     skip = 1)
 
 sp_rarity <- ecological_traits %>% select(scientific_name,n_squares = `gb_10_km_squares_(2000-2016)`)
