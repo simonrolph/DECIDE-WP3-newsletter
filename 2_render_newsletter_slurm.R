@@ -1,5 +1,7 @@
 args = commandArgs(trailingOnly=TRUE); i <- args[1]
 
+i <- as.numeric(i)
+
 library(rmarkdown)
 library(blastula)
 
