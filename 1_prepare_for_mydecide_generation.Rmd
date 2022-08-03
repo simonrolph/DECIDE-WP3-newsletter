@@ -1,15 +1,27 @@
 ---
-title: Sending DECIDE Monthly Newsletters
+title: Preparation for MyDECIDE generation
 output: html_document
 ---
 
+## Introduction
+
+This script creates the data outputs that are then passed to `2_render_newsletter_slurm.R` or `2_render_newsletter_job.R` when actually does the rendering. Whilst this is set up as R markdown, it is not intended to just be run as one but running each chunk separately (in a notebook sort of manner).
+
+Step 0: some preparation work that needs to be done outside this script
+
+Step 1: Load the user data and the records data into the R environment. Apply a 'top-up' step to get any records missed by the daily data collector.
+
+Step 2: Determine what email each user should get 
+
+Step 3: Save outputs that are then passed to the next processing stage
+
+Step 4: Tests
+
 ## Set up
 
-This R script is a simple way of sending emails out in bulk, it gets the list of users from a csv, builds a dataframe (step 0), generates email content for all users (step 1). Then it goes through all the users again and sends the emails (step 2).
+Initial set up, packages.
 
-This is set up as a markdown document so that it could in theory be run on a schedule on Rstudio: https://docs.rstudio.com/connect/user/scheduling/ connect.
-
-Initial set up, packages
+We define the 30 day period that the newsletters are generated from. This can be changed to be today or not today.
 
 ```{r}
 library(blastula)
@@ -30,12 +42,6 @@ library(doParallel)
 #the 30 day period
 start_date <- Sys.Date()-30
 end_date <- Sys.Date()
-
-#create a folder for the day's newsletters
-if(!dir.exists(paste0("newsletters/",Sys.Date()))){
-  dir.create(paste0("newsletters/",Sys.Date()))
-}
-
 
 ```
 
@@ -393,6 +399,8 @@ View(emails)
 
 ```
 
+## Step 3: Produce outputs for next processing stage
+
 ### Export information for the newsletter generator script
 
 Here we're looping through each user and making a nested list object that contains the name of the file for when the html is rendered and the markdown parameters in a list.
@@ -455,7 +463,7 @@ saveRDS(markdown_params_list,"data_personal/markdown_params_list.rds")
 
 ```
 
-Tests
+## Step 4: Tests
 
 ```{r}
 
@@ -463,13 +471,14 @@ Tests
 
 ```
 
+## Next processing stage
 
-The next stage is delivered with `render_newsletter_job`
+The items needed for the next stage are:
 
-
-
-
-
-
-
-
+ * The `records_{DATE}.RDS` object
+ * The parameters for the `markdown_params_list` saved as `data_personal/markdown_params_list.rds`.
+ 
+The items needed for sending the emails
+ * The `emails` object saved as `data_personal/emails_{DATE}.rds`
+ 
+The next stage is delivered with `2_render_newsletter_slurm.R` but on JASMIN (not running locally)

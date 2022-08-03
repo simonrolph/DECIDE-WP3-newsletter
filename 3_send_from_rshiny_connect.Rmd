@@ -1,23 +1,39 @@
 ---
-title: "send_emails"
+title: "Send_emails via Rstudio Connect to access SMTP server"
 author: "Simon Rolph"
-date: "30/06/2022"
 output: html_document
 resource_files:
   - "newsletters/2022-07-21"
 ---
 
+
+## Introduction
+
+
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## Preparatory steps
+
+Generated newsletters (in html format) must be downloaded from JASMIN and placed into a folder with the format `newsletters/{DATE}/`. This file path must then udpated in the `resource_files:` part of the YAML header above before deploying.
+
+## Set up and load data
+
+Load pacakges
 
 ```{r}
 library(blastula)
 library(magrittr)
 
-#creds <- creds_anonymous(host = "smtp.nerc-lancaster.ac.uk",port=25,use_ssl = T)
+creds <- creds_anonymous(host = "smtp.nerc-lancaster.ac.uk",port=25,use_ssl = T)
 
+```
+
+Load the emails data frame
+
+```{r}
 emails <- readRDS("data_personal/emails_2022-07-21.rds")
 
 #adapt the filepaths to work on rsconnect
@@ -25,59 +41,82 @@ for (i in 1:nrow(emails)){
   emails$newsletter_file_location[i] <- gsub("C:/Users/simrol/Documents/R/DECIDE-WP3-newsletter/","", emails$newsletter_file_location[i])
 }
 
-n_errors <- 0
-errors_i <- NULL
+```
+
+## Preflight checks
+
+Will abort if any identities are incorrect
+
+```{r}
+for (i in 1:nrow(emails)){
+  print(i)
+  if(file.exists(emails$newsletter_file_location[i])){
+    
+    #file found, checking identity
+    identity_check <- readLines(emails$newsletter_file_location[i]) %>% paste0(collapse="") %>% grepl(emails$name[i],.)
+    
+    if(!identity_check){
+      #if there's an error then abort completely
+      stop("Identity incorrect for an email. Aborting operation.")
+      knitr::knit_exit() #backup stop
+    }
+    
+  } else {
+    #indicate if a file is missing but don't abort
+    print("File missing")
+    #missing file
+  }
+}
+
+```
+
+
+## Sending emails
+
+Loop through and send the emails
+
+```{r}
 
 #loop through each email and send it
 for (i in 1:nrow(emails)){
-  #print(i)
+  print(i)
   
   #define sender and recipient (could change this for testing, eg. set the recipient to your email to generate a batch of emails for different users but then see what they look like in your own inbox without spamming real users.)
-  sender <- "DECIDE@ceh.ac.uk" # obviously we want to change then in real use
+  sender <- "DECIDE@ceh.ac.uk" 
   
   if(file.exists(emails$newsletter_file_location[i])){
 
-    #identity check (does the name of the person appear in the email content)
-    #print("identity check: ")
+    #final identity check (does the name of the person appear in the email content)
     identity_check <- readLines(emails$newsletter_file_location[i]) %>% paste0(collapse="") %>% grepl(emails$name[i],.)
-    print(identity_check)
-    
-    if(!identity_check){
+
+    if(identity_check){
+      # turn the rendered markdown into a blastula ready email object
+      email_obj <- blastula:::cid_images(emails$newsletter_file_location[i])
+
+      print("sending to: ")
+      print(c(emails$email[i]))
+
+      #send email
+      smtp_send(email_obj,
+                from = sender,
+                to = c(emails$email[i]),
+                #to = "simrol@ceh.ac.uk",
+                subject = "MyDECIDE",
+                credentials = creds,
+                verbose = F
+      )
       
+    } else {
       print(i)
-      n_errors <- n_errors+1
-      errors_i <- c(errors_i,i)
+      print("Identity not match, not sending email")
     }
 
-    # turn the rendered markdown into a blastula ready email object
-    #email_obj <- blastula:::cid_images(emails$newsletter_file_location[i])
-  
-    
-    #print("sending to: ")
-    #print(c(emails$email[i]))
-    
-    #send email
-    # smtp_send(email_obj,
-    #           from = sender,
-    #           to = c(emails$email[i]),
-    #           #to = "simrol@ceh.ac.uk",
-    #           subject = "MyDECIDE",
-    #           credentials = creds,
-    #           verbose = F
-    # )
-    
-    
-    #Sys.sleep(0.1)
+    Sys.sleep(0.25)
   } else {
-    print("file not found")
+    print("file not found. Email not sent.")
   }
 
 }
-
-
-n_errors
-
-
 
 #delete all the files
 #sapply(emails$newsletter_file_location, unlink)
