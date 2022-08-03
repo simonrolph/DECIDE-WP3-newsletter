@@ -1,1 +1,4 @@
 *.html
+*.knit.md
+*.csv
+*.png
