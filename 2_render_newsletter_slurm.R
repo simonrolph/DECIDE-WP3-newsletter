@@ -35,9 +35,9 @@ start_time <- Sys.time()
 print("RENDERING FILE:")
 render(
   "newsletter_templates/v0_0_7.Rmd",
-  output_dir = paste0("../newsletters/",newsletter_date),
+  output_dir = paste0("newsletters/",newsletter_date),
   output_file = newsletter_filename,
-  intermediates_dir = paste0("newsletter_templates/intermediates/",i),
+  intermediates_dir = paste0("newsletters/",newsletter_date,"/intermediates/",i),
   output_format = "blastula::blastula_email",
   params = markdown_params_list[[i]]$params,
   output_options = list(self_contained=T,output = "blastula::blastula_email"),
