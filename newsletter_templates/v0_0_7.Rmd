@@ -351,7 +351,7 @@ if(params$data_story != 5){
   #switched text whether or not the newsletter is personalised
   if(personalised){
       tags$h1(paste0("Hello ",params$name,"!")) %>% print()
-     p(paste0("Welcome to your MyDECIDE email. Here's a highlight of the impact of your butterfly recording from past 30 days. This includes the period from ",format(as.Date(start_date),"%A %d %B") ," to ",format(as.Date(end_date),"%A %d %B") ,".")) %>% print()
+     p(paste0("Welcome to your MyDECIDE email. Here's a highlight of the impact of your butterfly recording from the past 30 days. This includes the 30 day period  from ",format(as.Date(start_date),"%A %d %B") ," to ",format(as.Date(end_date),"%A %d %B") ,".")) %>% print()
      p(strong("We need your feedback for this research. Please rate this email by clicking on the orange button below.")) %>% print()
      
   } else {
