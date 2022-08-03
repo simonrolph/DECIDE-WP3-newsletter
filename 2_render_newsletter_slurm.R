@@ -25,6 +25,7 @@ if(!dir.exists(paste0("newsletters/",newsletter_date))){
   dir.create(paste0("newsletters/",newsletter_date))
 }
 
+newsletter_filename <- strsplit(markdown_params_list[[i]]$out,"/")[[1]][4]
 
 print("FILE SAVING TO:")
 print(markdown_params_list[[i]]$out)
@@ -34,17 +35,17 @@ start_time <- Sys.time()
 print("RENDERING FILE:")
 render(
   "newsletter_templates/v0_0_7.Rmd",
-  output_file = markdown_params_list[[i]]$out,
+  output_dir = paste0("../newsletters/",newsletter_date),
+  output_file = newsletter_filename,
+  intermediates_dir = paste0("newsletter_templates/intermediates/",i),
   output_format = "blastula::blastula_email",
   params = markdown_params_list[[i]]$params,
   output_options = list(self_contained=T,output = "blastula::blastula_email"),
   envir = new.env(),
-  intermediates_dir = paste0("newsletter_templates/intermediates/",i),
   clean=F,
   quiet=F
 )
-#get a traceback if something went wrong?
-traceback()
+
 
 print("TIME TAKEN:")
 print( Sys.time()-start_time)
