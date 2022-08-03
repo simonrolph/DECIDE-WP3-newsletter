@@ -3,16 +3,18 @@ args = commandArgs(trailingOnly=TRUE); i <- args[1]
 i <- as.numeric(i)
 
 library(rmarkdown)
+library(blastula)
 
 # see: https://github.com/rstudio/rmarkdown/issues/1632#issuecomment-545824711
-# clean_tmpfiles_mod <- function() {
-#   message("Calling clean_tmpfiles_mod()")
-# }
-# 
-# assignInNamespace("clean_tmpfiles", clean_tmpfiles_mod, ns = "rmarkdown")
+#this function shows when tempoary files are being cleaned, we want to prevent this
+clean_tmpfiles_mod <- function() {
+  message("Calling clean_tmpfiles_mod()")
+}
+
+assignInNamespace("clean_tmpfiles", clean_tmpfiles_mod, ns = "rmarkdown")
 
 
-library(blastula)
+
 
 
 markdown_params_list <- readRDS("data_personal/markdown_params_list.rds")
@@ -33,10 +35,11 @@ print("RENDERING FILE:")
 render(
   "newsletter_templates/v0_0_7.Rmd",
   output_file = markdown_params_list[[i]]$out,
+  output_format = "blastula::blastula_email",
   params = markdown_params_list[[i]]$params,
   output_options = list(self_contained=T,output = "blastula::blastula_email"),
   envir = new.env(),
-  intermediates_dir = paste0("intermediates_",i),
+  intermediates_dir = paste0("newsletter_templates/intermediates/",i),
   clean=F,
   quiet=F
 )

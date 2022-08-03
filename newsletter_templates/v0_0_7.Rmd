@@ -1,6 +1,5 @@
 ---
 title: "MyDECIDE"
-output: blastula::blastula_email
 params:
     name: "Person X"
     irecord_username: ""
