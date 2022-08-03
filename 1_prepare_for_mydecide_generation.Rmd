@@ -437,7 +437,7 @@ for (i in 1:n_emails){
   out_file_name <- paste0("../newsletters/",
                         Sys.Date(),
                         "/",
-                        emails$user_id[i],
+                        emails$user_uid[i],
                         "_",
                         markdown_params$try_personalised,
                         "_",

@@ -3,6 +3,15 @@ args = commandArgs(trailingOnly=TRUE); i <- args[1]
 i <- as.numeric(i)
 
 library(rmarkdown)
+
+# see: https://github.com/rstudio/rmarkdown/issues/1632#issuecomment-545824711
+# clean_tmpfiles_mod <- function() {
+#   message("Calling clean_tmpfiles_mod()")
+# }
+# 
+# assignInNamespace("clean_tmpfiles", clean_tmpfiles_mod, ns = "rmarkdown")
+
+
 library(blastula)
 
 
@@ -27,8 +36,12 @@ render(
   params = markdown_params_list[[i]]$params,
   output_options = list(self_contained=T,output = "blastula::blastula_email"),
   envir = new.env(),
+  intermediates_dir = paste0("intermediates_",i),
+  clean=F,
   quiet=F
 )
+#get a traceback if something went wrong?
+traceback()
 
 print("TIME TAKEN:")
 print( Sys.time()-start_time)

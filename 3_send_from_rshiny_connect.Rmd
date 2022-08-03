@@ -57,6 +57,7 @@ for (i in 1:nrow(emails)){
     
     if(!identity_check){
       #if there's an error then abort completely
+      print(emails$newsletter_file_location[i])
       stop("Identity incorrect for an email. Aborting operation.")
       knitr::knit_exit() #backup stop
     }
@@ -80,10 +81,10 @@ Loop through and send the emails
 #loop through each email and send it
 for (i in 1:nrow(emails)){
   print(i)
-  
+
   #define sender and recipient (could change this for testing, eg. set the recipient to your email to generate a batch of emails for different users but then see what they look like in your own inbox without spamming real users.)
-  sender <- "DECIDE@ceh.ac.uk" 
-  
+  sender <- "DECIDE@ceh.ac.uk"
+
   if(file.exists(emails$newsletter_file_location[i])){
 
     #final identity check (does the name of the person appear in the email content)
@@ -105,7 +106,7 @@ for (i in 1:nrow(emails)){
                 credentials = creds,
                 verbose = F
       )
-      
+
     } else {
       print(i)
       print("Identity not match, not sending email")
