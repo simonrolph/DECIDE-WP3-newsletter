@@ -6,5 +6,5 @@
 #SBATCH --time=5:00
 #SBATCH --array=1-10
 #SBATCH --mem=8000
-module add jaspy/3.7/r20200606
+module add jasr
 Rscript 2_render_newsletter_slurm.R ${SLURM_ARRAY_TASK_ID}
