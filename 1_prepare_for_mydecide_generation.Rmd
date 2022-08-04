@@ -68,8 +68,9 @@ user_db$irecord_username <- gsub(" ","",user_db$irecord_username)
 #remove doublespaces from names
 user_db$name <- gsub("  "," ",user_db$name)
 
-#remove duplicate user
-user_db <- user_db[-109,]
+#remove duplicate users (https://stackoverflow.com/questions/13279582/select-the-first-row-by-group)
+user_db <-user_db[!duplicated(user_db$email),]
+
 
 #create a new column which will be used to store the file location of outputted email
 user_db$newsletter_file_location <- ""
