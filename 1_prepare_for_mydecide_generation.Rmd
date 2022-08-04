@@ -74,6 +74,9 @@ user_db <- user_db[-109,]
 #create a new column which will be used to store the file location of outputted email
 user_db$newsletter_file_location <- ""
 
+#only subscribed users
+user_db <- filter(user_db,subscribed)
+
 #View the data frame
 View(user_db)
 ```
