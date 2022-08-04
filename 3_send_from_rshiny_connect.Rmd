@@ -57,8 +57,15 @@ for (i in 1:nrow(emails)){
     
     if(!identity_check){
       #if there's an error then abort completely
-      print(emails$newsletter_file_location[i])
-      stop("Identity incorrect for an email. Aborting operation.")
+      print(emails$newsletter_file_location[i]) #what file
+      
+      print("Expected name:")
+      print(emails$name[i]) #what name
+      
+      print("Opening html for viewing")
+      shell.exec(emails$newsletter_file_location[i]) #open file
+      
+      stop("Identity incorrect for an email. Aborting operation.") #stop
       knitr::knit_exit() #backup stop
     }
     

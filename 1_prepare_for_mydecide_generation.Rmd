@@ -40,8 +40,8 @@ library(terra) # for get_decide_score_local
 library(doParallel)
 
 #the 30 day period
-start_date <- Sys.Date()-30
-end_date <- Sys.Date()
+start_date <- Sys.Date()-31
+end_date <- Sys.Date()-1
 
 ```
 
@@ -59,11 +59,17 @@ Load in the users from a file downloaded from the sign-up app.
 
 ```{r}
 #load dataframe
-user_db <- read_csv("data_personal/data-2022-07-21.csv") #<-- update this to be the latest set of users
+user_db <- read_csv("data_personal/data-2022-08-04.csv") #<-- update this to be the latest set of users
 names(user_db)[1] <- "user_id"
 
 #remove spaces from irecord username
 user_db$irecord_username <- gsub(" ","",user_db$irecord_username)
+
+#remove doublespaces from names
+user_db$name <- gsub("  "," ",user_db$name)
+
+#remove duplicate user
+user_db <- user_db[-109,]
 
 #create a new column which will be used to store the file location of outputted email
 user_db$newsletter_file_location <- ""
