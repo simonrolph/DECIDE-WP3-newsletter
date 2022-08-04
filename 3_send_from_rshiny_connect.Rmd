@@ -88,8 +88,32 @@ for (i in 1:nrow(emails)){
     shell.exec(emails$newsletter_file_location[i]) #open file
     Sys.sleep(1)
   }
-  
 }
+
+
+
+#check are there any duplicates
+unique_test <- list.files("newsletters/2022-08-03/") %>%
+  paste0("newsletters/2022-08-03/",.) %>%
+  sapply(readLines,encoding = "UTF-8") %>%
+  sapply(paste0,collapse="")
+
+if(length(unique_test) != length(unique(unique_test))){
+  stop("Duplicate emails detected! Aborting operation.")
+}
+
+
+
+# file size the same?
+file_size_test <- list.files("newsletters/2022-08-03/") %>%
+  paste0("newsletters/2022-08-03/",.) %>%
+  sapply(function(x){file.info(x)$size})
+
+length(file_size_test)
+length(unique(file_size_test))
+
+#view which ones have duplciated file sizes, they're all data story 5 which are very similar anyway so that is expected
+file_size_test[duplicated(file_size_test)]
 
 ```
 

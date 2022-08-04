@@ -620,9 +620,15 @@ if(params$data_story == 2){
                 max = "5"
               ))
   #read the JSON
-  suggestions <- fromJSON(fromJSON(rawToChar(res$content)))
-  #get the geojson
-  suggestions <- suggestions$geojson %>% geojson_sf()
+  if(names(fromJSON(rawToChar(res$content)))!="error"){
+    suggestions <- fromJSON(fromJSON(rawToChar(res$content)))
+    #get the geojson
+    suggestions <- suggestions$geojson %>% geojson_sf()
+  } else {
+    stop("DECIDE API failed to get suggestions (possibly due to being outside GB)")
+  }
+  
+  
   
   
   # VISUALISE
