@@ -34,7 +34,7 @@ creds <- creds_anonymous(host = "smtp.nerc-lancaster.ac.uk",port=25,use_ssl = T)
 Load the emails data frame
 
 ```{r}
-emails <- readRDS("data_personal/emails_2022-07-21.rds")
+emails <- readRDS("data_personal/emails_2022-08-03.rds") # UPDATE THIS TO THE LASTEST FILE
 
 #adapt the filepaths to work on rsconnect
 for (i in 1:nrow(emails)){
@@ -49,11 +49,15 @@ Will abort if any identities are incorrect
 
 ```{r}
 for (i in 1:nrow(emails)){
-  print(i)
+  #print(i)
   if(file.exists(emails$newsletter_file_location[i])){
     
     #file found, checking identity
-    identity_check <- readLines(emails$newsletter_file_location[i]) %>% paste0(collapse="") %>% grepl(emails$name[i],.)
+    identity_check <- readLines(emails$newsletter_file_location[i],encoding = "UTF-8") %>% 
+      paste0(collapse="") %>% 
+      gsub("’","'",.) %>% #circumvent encoding issue
+      grepl(emails$name[i],.)
+    
     
     if(!identity_check){
       #if there's an error then abort completely
@@ -71,9 +75,20 @@ for (i in 1:nrow(emails)){
     
   } else {
     #indicate if a file is missing but don't abort
-    print("File missing")
+    print("File missing:")
+    print(emails$newsletter_file_location[i]) #what file
     #missing file
   }
+}
+
+
+#manual visual check
+for (i in 1:nrow(emails)){
+  if(file.exists(emails$newsletter_file_location[i])){
+    shell.exec(emails$newsletter_file_location[i]) #open file
+    Sys.sleep(1)
+  }
+  
 }
 
 ```

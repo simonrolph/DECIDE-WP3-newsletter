@@ -154,8 +154,14 @@ records_data <- records_data %>% select(
              month = as.numeric(month),
              year = as.numeric(year))
 
+
+#correct longitude if they have dragged around the world on the sigh up app
+home_lon <- params$home_lon
+if(home_lon<360){ home_lon <- home_lon %% -360}
+if(home_lon>360){home_lon <- home_lon %% 360}
+
 #within home range?
-records_data$dist_from_home <- geosphere::distm(records_data[,c("longitude","latitude")],c(params$home_lon,params$home_lat)) %>% as.numeric() # column for distance from central point
+records_data$dist_from_home <- geosphere::distm(records_data[,c("longitude","latitude")],c(home_lon,params$home_lat)) %>% as.numeric() # column for distance from central point
 records_data <- mutate(records_data,in_home_range = dist_from_home <= 25000) # T/F for if it's within 25km
 
 #transform to spatial dataframe
@@ -812,7 +818,7 @@ if (params$data_story == 3){
     
     ds3_map <-ggplot()+
       annotation_map_tile(type = "cartolight", zoomin = -1,progress="none")+
-      layer_spatial(invisible_circle(params$home_lon,
+      layer_spatial(invisible_circle(home_lon,
                                      params$home_lat,size = 0.5),alpha = 0,colour = NA)+
       annotation_spatial(d3_community_data_this_month, col = "#331400", size = 2.5, alpha = 0.3)+
       fixed_plot_aspect()+
@@ -1012,7 +1018,7 @@ if(params$data_story == 4){
     decide_button(paste0("https://dwptwo-mydecide.datalabs.ceh.ac.uk?lat=",
                     params$home_lat,
                     "&lon=",
-                    params$home_lon,
+                    home_lon,
                     "&zoom=12&score=true&suggestions=true&ds=4")) %>% print()
   }
   
@@ -1031,7 +1037,7 @@ if(params$data_story == 5){
   decide_button(paste0("https://dwptwo-mydecide.datalabs.ceh.ac.uk?lat=",
                     params$home_lat,
                     "&lon=",
-                    params$home_lon,
+                    home_lon,
                     "&zoom=12&score=true&suggestions=true&ds=5")) %>% print()
   
   hr2() %>% print()
