@@ -447,7 +447,7 @@ for (i in 1:n_emails){
   out_file_name <- paste0("../newsletters/",
                         Sys.Date(),
                         "/",
-                        emails$user_uid[i],
+                        emails$uid[i],
                         "_",
                         markdown_params$try_personalised,
                         "_",
@@ -470,6 +470,9 @@ saveRDS(emails,paste0("data_personal/emails_",end_date,".rds"))
 
 #save the params list - this is needed for the next stage!
 saveRDS(markdown_params_list,"data_personal/markdown_params_list.rds")
+
+#how many jobs to run on JASMIN
+length(markdown_params_list)
 
 ```
 

@@ -7,6 +7,10 @@ if(F){
   lat = 53
   lon = -1.5
   name = "moth"
+  
+  lons <- rep(-1,100)
+  lats <- rep(53,100)
+  file_path_to_raster <- "//nerclactdb.adceh.ceh.ac.uk/appdev/appdev/DECIDE/data/species_data/raster_decide_priority/butterfly_decide_raster_all_year.tif"
 }
 
 #get decide score for a point
@@ -32,5 +36,13 @@ get_decide_score_local <- function(lon,lat,file_path_to_raster){
   point <- st_sfc(point,crs = 4326) %>% st_transform(27700) %>% st_coordinates()
   
   extract(rast(file_path_to_raster),point)[[1]] %>% as.numeric()
+}
+
+#faster version that doesn't need to be in a loop
+get_decide_score_local_fast <- function(lons,lats,file_path_to_raster){
+  points <- st_multipoint(matrix(c(lons,lats),ncol=2))
+  points <- st_sfc(points,crs = 4326) %>% st_transform(27700) %>% st_coordinates()
+  
+  extract(rast(file_path_to_raster),points[,1:2])[[1]] %>% as.numeric()
 }
 
