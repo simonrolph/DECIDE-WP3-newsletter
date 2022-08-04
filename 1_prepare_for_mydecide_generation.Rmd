@@ -311,7 +311,7 @@ Check whether the users have recorded in the last 30 days, or since 1st april 20
 ```{r}
 
 #load in data
-records_data <- readRDS("data/species_records_2022-07-21.RDS")
+records_data <- readRDS(paste0("data/species_records_",Sys.Date(),".RDS"))
 
 #get a list of users that recorded this year (for data story 4)
 thisyear <- records_data %>%
@@ -434,7 +434,7 @@ for (i in 1:n_emails){
         start_date = start_date,
         end_date =  end_date,
         try_personalised = emails$personalised[i],
-        records_data_location = "data/species_records_2022-07-21.RDS",
+        records_data_location = paste0("data/species_records_",Sys.Date(),".RDS"),
         home_lat = emails$home_lat[i],
         home_lon = emails$home_lon[i],
         irecord_key      = gsub("Â","",Sys.getenv("irecord_key")),
