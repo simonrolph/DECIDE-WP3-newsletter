@@ -3,7 +3,7 @@ title: "Send_emails via Rstudio Connect to access SMTP server"
 author: "Simon Rolph"
 output: html_document
 resource_files:
-  - "newsletters/2022-07-21"
+  - "newsletters/2022-08-03/"
 ---
 
 
@@ -29,6 +29,8 @@ library(magrittr)
 
 creds <- creds_anonymous(host = "smtp.nerc-lancaster.ac.uk",port=25,use_ssl = T)
 
+test_mode <- FALSE
+
 ```
 
 Load the emails data frame
@@ -40,6 +42,13 @@ emails <- readRDS("data_personal/emails_2022-08-03.rds") # UPDATE THIS TO THE LA
 for (i in 1:nrow(emails)){
   emails$newsletter_file_location[i] <- gsub("C:/Users/simrol/Documents/R/DECIDE-WP3-newsletter/","", emails$newsletter_file_location[i])
 }
+
+nrow(emails)
+
+#in case there are duplicates
+emails <- emails[!duplicated(emails$email),]
+
+nrow(emails)
 
 ```
 
@@ -81,12 +90,13 @@ for (i in 1:nrow(emails)){
   }
 }
 
-
-#manual visual check
-for (i in 1:nrow(emails)){
-  if(file.exists(emails$newsletter_file_location[i])){
-    shell.exec(emails$newsletter_file_location[i]) #open file
-    Sys.sleep(1)
+if(F){
+  #manual visual check
+  for (i in 1:nrow(emails)){
+    if(file.exists(emails$newsletter_file_location[i])){
+      shell.exec(emails$newsletter_file_location[i]) #open file
+      Sys.sleep(1)
+    }
   }
 }
 
@@ -112,8 +122,7 @@ file_size_test <- list.files("newsletters/2022-08-03/") %>%
 length(file_size_test)
 length(unique(file_size_test))
 
-#view which ones have duplciated file sizes, they're all data story 5 which are very similar anyway so that is expected
-file_size_test[duplicated(file_size_test)]
+
 
 ```
 
@@ -124,8 +133,15 @@ Loop through and send the emails
 
 ```{r}
 
+if(test_mode){
+  i_emails <- round(runif(50,0,nrow(emails)))
+} else {
+  i_emails <- 1:nrow(emails)
+}
+
+
 #loop through each email and send it
-for (i in 1:nrow(emails)){
+for (i in i_emails){
   print(i)
 
   #define sender and recipient (could change this for testing, eg. set the recipient to your email to generate a batch of emails for different users but then see what they look like in your own inbox without spamming real users.)
@@ -142,13 +158,20 @@ for (i in 1:nrow(emails)){
 
       print("sending to: ")
       print(c(emails$email[i]))
+      
+      if(test_mode){
+        send_to_email <- "decidenewsletter@gmail.com"
+        subject <- paste0("MyDECIDE to ",c(emails$email[i]))
+      } else{
+        send_to_email <- c(emails$email[i])
+        subject <- "MyDECIDE"
+      }
 
       #send email
       smtp_send(email_obj,
                 from = sender,
-                to = c(emails$email[i]),
-                #to = "simrol@ceh.ac.uk",
-                subject = "MyDECIDE",
+                to = send_to_email,
+                subject = subject,
                 credentials = creds,
                 verbose = F
       )
@@ -158,7 +181,7 @@ for (i in 1:nrow(emails)){
       print("Identity not match, not sending email")
     }
 
-    Sys.sleep(0.25)
+    Sys.sleep(1)
   } else {
     print("file not found. Email not sent.")
   }
