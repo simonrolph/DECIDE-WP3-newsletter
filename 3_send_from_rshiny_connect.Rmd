@@ -3,27 +3,32 @@ title: "Send_emails via Rstudio Connect to access SMTP server"
 author: "Simon Rolph"
 output: html_document
 resource_files:
-  - "newsletters/2022-08-03/"
+  - "newsletters/2022-08-10/"
 ---
-
-
-## Introduction
-
-
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+batch_date <- "2022-08-10"
+# ^ this line is updated by code at the end of 1_...Rmd
+```
+
+
+## Introduction
+
+This script sends the MyDECIDE emails from RStudio Connect. The advantage being that it avoids adding the big ugly disclaimer that appears from the bottom of emails sent via the UKCEH normal smtp. This script has some preflight checks to make sure that emails will go out to the right people. Test mode (`test_mode`) if set to true it will send a sample of 50 emails to a gmail address that can then be used to check that they're sending ok.
+
 ## Preparatory steps
 
-Generated newsletters (in html format) must be downloaded from JASMIN and placed into a folder with the format `newsletters/{DATE}/`. This file path must then udpated in the `resource_files:` part of the YAML header above before deploying.
+Generated newsletters (in html format) must be downloaded from JASMIN and placed into a folder with the format `newsletters/{DATE}/`. This file path must then updated in the `resource_files:` part of the YAML header above before deploying. This updating is done automatically by the `1_...` script
 
 ## Set up and load data
 
-Load pacakges
+Load packages
 
-```{r}
+```{r load_packages}
 library(blastula)
 library(magrittr)
 
@@ -35,8 +40,9 @@ test_mode <- FALSE
 
 Load the emails data frame
 
-```{r}
-emails <- readRDS("data_personal/emails_2022-08-03.rds") # UPDATE THIS TO THE LASTEST FILE
+```{r load_emails_dataframe}
+
+emails <- readRDS(paste0("data_personal/emails_",batch_date,".rds"))
 
 #adapt the filepaths to work on rsconnect
 for (i in 1:nrow(emails)){
@@ -50,13 +56,18 @@ emails <- emails[!duplicated(emails$email),]
 
 nrow(emails)
 
+#remove people who requested to unsubscribe but didn't do it through the tool
+emails <- emails[!(emails$email %in% c("")),]
+
+nrow(emails)
+
 ```
 
 ## Preflight checks
 
 Will abort if any identities are incorrect
 
-```{r}
+```{r preflight_checks}
 for (i in 1:nrow(emails)){
   #print(i)
   if(file.exists(emails$newsletter_file_location[i])){
@@ -100,11 +111,11 @@ if(F){
   }
 }
 
-
+newsletter_file_loc <- paste0("newsletters/",batch_date,"/")
 
 #check are there any duplicates
-unique_test <- list.files("newsletters/2022-08-03/") %>%
-  paste0("newsletters/2022-08-03/",.) %>%
+unique_test <- list.files(newsletter_file_loc) %>%
+  paste0(newsletter_file_loc,.) %>%
   sapply(readLines,encoding = "UTF-8") %>%
   sapply(paste0,collapse="")
 
@@ -115,14 +126,14 @@ if(length(unique_test) != length(unique(unique_test))){
 
 
 # file size the same?
-file_size_test <- list.files("newsletters/2022-08-03/") %>%
-  paste0("newsletters/2022-08-03/",.) %>%
+file_size_test <- list.files(newsletter_file_loc) %>%
+  paste0(newsletter_file_loc,.) %>%
   sapply(function(x){file.info(x)$size})
 
 length(file_size_test)
 length(unique(file_size_test))
 
-
+file_size_test[duplicated(file_size_test)]
 
 ```
 
@@ -131,7 +142,7 @@ length(unique(file_size_test))
 
 Loop through and send the emails
 
-```{r}
+```{r send_emails}
 
 if(test_mode){
   i_emails <- round(runif(50,0,nrow(emails)))

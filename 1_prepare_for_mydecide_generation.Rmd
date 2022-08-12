@@ -39,13 +39,6 @@ library(terra) # for get_decide_score_local
 #for parallel rendering
 library(doParallel)
 
-#the 30 day period
-start_date <- Sys.Date()-31
-end_date <- Sys.Date()-1
-
-start_date <- as.Date("2022-07-11")
-end_date <- as.Date("2022-08-10")
-
 ```
 
 ## Step 0:
@@ -61,8 +54,16 @@ Open `data-personal/users_lookups.csv` in Excel, add new users from the file dow
 Load in the users from a file downloaded from the sign-up app.
 
 ```{r}
+#get the date of that the most recent personal data was downloaded from the sign-up app
+date_of_most_recent_user_data <- list.files("data_personal/download_from_signup_app") %>% gsub("data-","",.) %>% gsub(".csv","",.) %>% as.Date() %>% max()
+
+#the 30 day period
+start_date <- date_of_most_recent_user_data-32
+end_date <- date_of_most_recent_user_data-1
+
+
 #load dataframe
-user_db <- read_csv("data_personal/data-2022-08-11.csv") #<-- update this to be the latest set of users
+user_db <- read_csv(paste0("data_personal/download_from_signup_app/data-",date_of_most_recent_user_data,".csv")) 
 names(user_db)[1] <- "user_id"
 
 #remove spaces from irecord username
@@ -282,6 +283,21 @@ latin_square$seq <- as.numeric(latin_square$seq)
 #load the user database which contains their email and what track (t1-t18) they're on
 user_tracks <- read.csv("data_personal/users_lookups.csv") %>% mutate(email = gsub(" ","",email))
 
+#automatically assign new tracks
+last_track <- user_tracks$group %>% last() %>% gsub("t","",.) %>% as.numeric() #last track
+
+#find users without tracks
+new_emails <- user_db %>% filter(!(email %in% user_tracks$email)) %>% pull(email)
+new_emails <- new_emails[!grepl("zzz",new_emails)]
+
+#plenty of new tracks
+new_tracks <- rep(paste0("t",1:18),100)[(last_track+1):100]
+length(new_tracks) <- length(new_emails)
+
+if(length(new_emails)>0){
+  
+}
+
 
 #build email log from the rendered files
 sent_emails <- data.frame(uid=0,personalised=F,ds="1")[-1,]
@@ -474,6 +490,10 @@ saveRDS(emails,paste0("data_personal/emails_",end_date,".rds"))
 #save the params list - this is needed for the next stage!
 saveRDS(markdown_params_list,"data_personal/markdown_params_list.rds")
 
+
+```
+
+```{r}
 #how many jobs to run on JASMIN
 length(markdown_params_list)
 
@@ -481,6 +501,13 @@ length(markdown_params_list)
 sbatchfile <- readLines("generate_mydecide.sbatch")
 sbatchfile[8] <- paste0("#SBATCH --array=1-", length(markdown_params_list))
 writeLines(sbatchfile,"generate_mydecide.sbatch")
+
+#update lines in 3_... file to reflect the files paths to the latest batch of newsletters 
+send_script <- readLines("3_send_from_rshiny_connect.Rmd")
+send_script[6] <- paste0("  - \"newsletters/",end_date,"/\"")
+send_script[14] <- paste0('batch_date <- "',end_date,'"')
+writeLines(send_script,"3_send_from_rshiny_connect.Rmd")
+
 
 ```
 
@@ -512,6 +539,10 @@ Run test script with
 Check the job progress with 
 
 `squeue -u simrol`
+
+Can delete any rendered test emails using a line like this (specifing the folder by replacing the XX)
+
+`rm -r newsletters/2022-XX-XX`
 
 Then if all working correctly then run the main script:
 
