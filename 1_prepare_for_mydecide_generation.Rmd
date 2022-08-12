@@ -477,14 +477,37 @@ saveRDS(markdown_params_list,"data_personal/markdown_params_list.rds")
 #how many jobs to run on JASMIN
 length(markdown_params_list)
 
+#Update `.sbatch` file to have the correct job array length
+sbatchfile <- readLines("generate_mydecide.sbatch")
+sbatchfile[8] <- paste0("#SBATCH --array=1-", length(markdown_params_list))
+writeLines(sbatchfile,"generate_mydecide.sbatch")
+
 ```
 
 ## Next processing stage
 
-The items needed for the next stage are:
+Commit to github
+
+The items needed for generating emails on JASMIN are:
 
  * The `records_{DATE}.RDS` object
  * The parameters for the `markdown_params_list` saved as `data_personal/markdown_params_list.rds`.
+ 
+Log into JASMIN with 
+
+`ssh -A simrol@sci1.jasmin.ac.uk`
+
+And navigate to directory with
+
+`cd DECIDE/DECIDE-WP3-newsletter`
+
+pull from github
+
+`git pull`
+
+Run script with
+
+`sbatch 2_render_newsletter_slurm.R`
  
 The items needed for sending the emails
  * The `emails` object saved as `data_personal/emails_{DATE}.rds`
