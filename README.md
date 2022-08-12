@@ -46,12 +46,11 @@ Each of the functions defined in `functions/check_usernames.R` return a `TRUE` i
 
 ## Preparing data
 
-`1_prepare_for_mydecide_generation.Rmd`
-
-...
+The personalised emails are generated from data created by the daily data collector (https://github.com/BiologicalRecordsCentre/DECIDE-dynamic-dataflow) which saves files on a network drive as `.fst` files. The workflow file `1_prepare_for_mydecide_generation.Rmd` runs these data prep steps. Personal data is downloaded from the sign-up portal as a `.csv`. The daily data collector seems to miss some records so a manual step is done to loop through each username and download records for each person. This script also works out what emails to send to each participant (via an adapted latin square approach). This produces outputs (the big data frame and dataframe describing what email each people should get) that are then used in the next stage.
 
 ## Generating email content
 
+Mass rendering of content is now run on
 On JASMIN
 
 `2_render_newsletter_slurm.R` and `generate_mydecide.sbatch`
