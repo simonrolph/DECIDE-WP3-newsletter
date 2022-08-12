@@ -43,6 +43,9 @@ library(doParallel)
 start_date <- Sys.Date()-31
 end_date <- Sys.Date()-1
 
+start_date <- as.Date("2022-07-11")
+end_date <- as.Date("2022-08-10")
+
 ```
 
 ## Step 0:
@@ -59,7 +62,7 @@ Load in the users from a file downloaded from the sign-up app.
 
 ```{r}
 #load dataframe
-user_db <- read_csv("data_personal/data-2022-08-04.csv") #<-- update this to be the latest set of users
+user_db <- read_csv("data_personal/data-2022-08-11.csv") #<-- update this to be the latest set of users
 names(user_db)[1] <- "user_id"
 
 #remove spaces from irecord username
@@ -123,7 +126,7 @@ records$month <- records$observed_on %>% as.Date() %>% format(format = "%m")
 records$year <- records$observed_on %>% as.Date() %>% format(format = "%Y")
 
 #save data
-saveRDS(records,paste0("data/species_records_",Sys.Date(),".RDS"))
+saveRDS(records,paste0("data/species_records_",end_date,".RDS"))
 saveRDS(records,paste0("data/species_records.RDS"))
 
 ```
@@ -311,7 +314,7 @@ Check whether the users have recorded in the last 30 days, or since 1st april 20
 ```{r}
 
 #load in data
-records_data <- readRDS(paste0("data/species_records_",Sys.Date(),".RDS"))
+records_data <- readRDS(paste0("data/species_records_",end_date,".RDS"))
 
 #get a list of users that recorded this year (for data story 4)
 thisyear <- records_data %>%
@@ -434,7 +437,7 @@ for (i in 1:n_emails){
         start_date = start_date,
         end_date =  end_date,
         try_personalised = emails$personalised[i],
-        records_data_location = paste0("data/species_records_",Sys.Date(),".RDS"),
+        records_data_location = paste0("data/species_records_",end_date,".RDS"),
         home_lat = emails$home_lat[i],
         home_lon = emails$home_lon[i],
         irecord_key      = gsub("Â","",Sys.getenv("irecord_key")),
@@ -473,14 +476,6 @@ saveRDS(markdown_params_list,"data_personal/markdown_params_list.rds")
 
 #how many jobs to run on JASMIN
 length(markdown_params_list)
-
-```
-
-## Step 4: Tests
-
-```{r}
-
-
 
 ```
 
