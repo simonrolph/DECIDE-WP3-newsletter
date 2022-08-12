@@ -484,7 +484,7 @@ writeLines(sbatchfile,"generate_mydecide.sbatch")
 
 ```
 
-## Next processing stage
+## Next processing stage - generating email contant
 
 Commit to github
 
@@ -505,11 +505,15 @@ pull from github
 
 `git pull`
 
-Run script with
+Run test script with
 
-`sbatch 2_render_newsletter_slurm.R`
+`sbatch generate_mydecide_test.sbatch`
+
+Then if all working correctly then run the main script:
+
+`sbatch generate_mydecide.sbatch`
+
+## Sending emails
  
 The items needed for sending the emails
  * The `emails` object saved as `data_personal/emails_{DATE}.rds`
- 
-The next stage is delivered with `2_render_newsletter_slurm.R` but on JASMIN (not running locally)
