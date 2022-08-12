@@ -509,6 +509,10 @@ Run test script with
 
 `sbatch generate_mydecide_test.sbatch`
 
+Check the job progress with 
+
+`squeue -u simrol`
+
 Then if all working correctly then run the main script:
 
 `sbatch generate_mydecide.sbatch`
