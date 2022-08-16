@@ -1017,7 +1017,7 @@ if(params$data_story == 4){
                     individual_data_this_month %>% as.data.frame() %>% arrange(observed_on) %>% tail(1) %>% pull(latitude),
                     "&lon=",
                     individual_data_this_month %>% as.data.frame() %>% arrange(observed_on) %>% tail(1) %>% pull(longitude),
-                    "&zoom=13&ds=3&score=true&suggestions=true")) %>% print()
+                    "&zoom=13&ds=4&score=true&suggestions=true")) %>% print()
     
   } else {
     p("Build your impact by planning a visit in the area you specified when you signed-up to MyDECIDE and consider going to a place that has a high priority for recording.") %>% print()

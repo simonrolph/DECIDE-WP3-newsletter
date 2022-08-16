@@ -320,6 +320,7 @@ sent_emails <- mutate(sent_emails,
 
 email_log <- sent_emails %>% rename(data_story = letter)
 
+View(email_log)
 
 ```
 
