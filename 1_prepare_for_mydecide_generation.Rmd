@@ -66,6 +66,8 @@ end_date <- date_of_most_recent_user_data-1
 user_db <- read_csv(paste0("data_personal/download_from_signup_app/data-",date_of_most_recent_user_data,".csv")) 
 names(user_db)[1] <- "user_id"
 
+saveRDS(user_db,paste0("data_personal/data_export/users_",date_of_most_recent_user_data,".RDS"))
+
 #remove spaces from irecord username
 user_db$irecord_username <- gsub(" ","",user_db$irecord_username)
 
@@ -83,7 +85,7 @@ user_db$newsletter_file_location <- ""
 user_db <- filter(user_db,subscribed)
 
 #View the data frame
-View(user_db)
+#View(user_db)
 ```
 
 ### Build records data frame
@@ -283,19 +285,20 @@ latin_square$seq <- as.numeric(latin_square$seq)
 #load the user database which contains their email and what track (t1-t18) they're on
 user_tracks <- read.csv("data_personal/users_lookups.csv") %>% mutate(email = gsub(" ","",email))
 
-#automatically assign new tracks
-last_track <- user_tracks$group %>% last() %>% gsub("t","",.) %>% as.numeric() #last track
-
-#find users without tracks
-new_emails <- user_db %>% filter(!(email %in% user_tracks$email)) %>% pull(email)
-new_emails <- new_emails[!grepl("zzz",new_emails)]
-
-#plenty of new tracks
-new_tracks <- rep(paste0("t",1:18),100)[(last_track+1):100]
-length(new_tracks) <- length(new_emails)
-
-if(length(new_emails)>0){
+#automatically assign new tracks (unfinished)
+if(F){
+  last_track <- user_tracks$group %>% last() %>% gsub("t","",.) %>% as.numeric() #last track
   
+  #find users without tracks
+  new_emails <- user_db %>% filter(!(email %in% user_tracks$email)) %>% pull(email)
+  new_emails <- new_emails[!grepl("zzz",new_emails)]
+  
+  #plenty of new tracks # TODO
+  new_tracks <- rep(paste0("t",1:18),100)[(last_track+1):100]
+  length(new_tracks) <- length(new_emails)
+  
+  if(length(new_emails)>0){
+  }
 }
 
 
@@ -320,7 +323,9 @@ sent_emails <- mutate(sent_emails,
 
 email_log <- sent_emails %>% rename(data_story = letter)
 
-View(email_log)
+saveRDS(email_log,paste0("data_personal/data_export/email_log_",Sys.Date(),".RDS"))
+
+#View(email_log)
 
 ```
 
@@ -356,7 +361,7 @@ user_db$recorded_this_year <- user_db$irecord_username %in% thisyear |
   user_db$ispot_username %in% thisyear |
   user_db$inat_username %in% thisyear
 
-View(user_db)
+#View(user_db)
 
 ```
 

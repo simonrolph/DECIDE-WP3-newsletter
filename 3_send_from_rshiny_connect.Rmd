@@ -3,7 +3,7 @@ title: "Send_emails via Rstudio Connect to access SMTP server"
 author: "Simon Rolph"
 output: html_document
 resource_files:
-  - "newsletters/2022-08-10/"
+  - "newsletters/2022-08-17/"
 ---
 
 ```{r setup, include=FALSE}
@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-batch_date <- "2022-08-10"
+batch_date <- "2022-08-17"
 # ^ this line is updated by code at the end of 1_...Rmd
 ```
 
