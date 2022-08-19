@@ -331,9 +331,24 @@ place_name_fun <- function(lat,lon){
   }
   
   place_name <- gsub("CP","",place_name)
+  
+
+  #absolute fall back
+  if(place_name == "in " ){
+    distance_from_home <- distm(c(lon,lat),c(home_lon,params$home_lat)) %>% as.numeric()
+    if(distance_from_home<5000){
+      place_name <- "in your local area"
+    } else {
+      place_name <- "outside in your local area"
+    }
+    
+  }
 
   place_name
 }
+
+
+
 
 
 ### ACTUAL NEWSLETTER CONTENT STARTS BELOW
