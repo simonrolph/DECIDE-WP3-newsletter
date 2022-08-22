@@ -1039,7 +1039,7 @@ if(params$data_story == 4){
   p(em("The MyDECIDE impact score of recorders."),style="font-size:10px;text-align:center;") %>% print()
   
   if(personalised){
-    last_visit <- individual_data %>% arrange(-day,-month,-year) %>% head(1)
+    last_visit <- individual_data %>% arrange(day,month,year) %>% head(1)
   
     place_name <- place_name_fun(lat = last_visit$latitude,lon = last_visit$longitude)
     
@@ -1047,9 +1047,9 @@ if(params$data_story == 4){
     
     #vsit tool button
     decide_button(paste0("https://dwptwo-mydecide.datalabs.ceh.ac.uk?lat=",
-                    individual_data_this_month %>% as.data.frame() %>% arrange(observed_on) %>% tail(1) %>% pull(latitude),
+                    last_visit$latitude,
                     "&lon=",
-                    individual_data_this_month %>% as.data.frame() %>% arrange(observed_on) %>% tail(1) %>% pull(longitude),
+                    last_visit$longitude,
                     "&zoom=13&ds=4&score=true&suggestions=true")) %>% print()
     
   } else {
