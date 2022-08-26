@@ -448,7 +448,7 @@ if(params$data_story == 1){
   }
   
   #in case recording priority is NA for all their records
-  if(sum(is.na(ds1_data$recording_priority)) == nrow(ds1_data$recording_priority)){
+  if(sum(is.na(ds1_data$recording_priority)) == nrow(ds1_data)){
     ds1_data$recording_priority <- 1 #set them all to 1
   }
   
