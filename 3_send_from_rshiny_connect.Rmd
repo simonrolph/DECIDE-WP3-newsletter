@@ -3,16 +3,16 @@ title: "Send_emails via Rstudio Connect to access SMTP server"
 author: "Simon Rolph"
 output: html_document
 resource_files:
-  - "newsletters/2022-08-17/"
+  - "newsletters/2022-08-25/"
+  - "data_personal/emails_2022-08-25.rds"
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-```
 
-```{r}
-batch_date <- "2022-08-17"
-# ^ this line is updated by code at the end of 1_...Rmd
+
+batch_date <- "2022-08-25"
+# ^ this line (14) is updated by code at the end of 1_...Rmd
 ```
 
 
@@ -34,7 +34,7 @@ library(magrittr)
 
 creds <- creds_anonymous(host = "smtp.nerc-lancaster.ac.uk",port=25,use_ssl = T)
 
-test_mode <- FALSE
+test_mode <- TRUE
 
 ```
 
@@ -56,8 +56,11 @@ emails <- emails[!duplicated(emails$email),]
 
 nrow(emails)
 
-#remove people who requested to unsubscribe but didn't do it through the tool
-emails <- emails[!(emails$email %in% c("")),]
+
+
+#remove people who requested to unsubscribe but didn't do it through the tool (which I have to add manually to data_personal_unsubbed.txt - each email a new line)
+unsubbed <- readLines("data_personal/unsubbed.txt")
+emails <- emails[!(emails$email %in% unsubbed),]
 
 nrow(emails)
 
@@ -105,7 +108,7 @@ if(F){
   #manual visual check
   for (i in 1:nrow(emails)){
     if(file.exists(emails$newsletter_file_location[i])){
-      shell.exec(emails$newsletter_file_location[i]) #open file
+      shell.exec(paste0(getwd(),"/",emails$newsletter_file_location[i])) #open file
       Sys.sleep(1)
     }
   }
@@ -133,8 +136,7 @@ file_size_test <- list.files(newsletter_file_loc) %>%
 length(file_size_test)
 length(unique(file_size_test))
 
-file_size_test[duplicated(file_size_test)]
-
+file_size_test[duplicated(file_size_test) | duplicated(file_size_test, fromLast=TRUE)]
 ```
 
 

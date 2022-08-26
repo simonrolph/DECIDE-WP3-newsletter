@@ -141,6 +141,8 @@ Due to an unknown error, the data collector doesn't seem to get all the records,
 This is assuming that you are running this chunk directly after the previous chunk so that the `records` object is already loaded into the environment.
 
 ```{r}
+#note that the top-up is less needed as last time it was run the users had a total of >68k records but only 124 were missed
+
 if(F){
   average_decide <- records$decide_score_all_time_pre %>% mean(na.rm = T)
 
@@ -511,6 +513,7 @@ writeLines(sbatchfile,"generate_mydecide.sbatch")
 #update lines in 3_... file to reflect the files paths to the latest batch of newsletters 
 send_script <- readLines("3_send_from_rshiny_connect.Rmd")
 send_script[6] <- paste0("  - \"newsletters/",end_date,"/\"")
+send_script[7] <- paste0("  - \"data_personal/emails_",end_date,".rds\"")
 send_script[14] <- paste0('batch_date <- "',end_date,'"')
 writeLines(send_script,"3_send_from_rshiny_connect.Rmd")
 
