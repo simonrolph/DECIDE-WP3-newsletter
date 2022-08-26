@@ -341,9 +341,7 @@ place_name_fun <- function(lat,lon){
   }
   
   place_name <- gsub("CP","",place_name)
-  
-  warning(c(lon,lat))
-  warning(c(home_lon,params$home_lat))
+
   
 
   #absolute fall back
@@ -449,6 +447,11 @@ if(params$data_story == 1){
     
   }
   
+  #in case recording priority is NA for all their records
+  sum(is.na(ds1_data$recording_priority)) == nrow(ds1_data$recording_priority){
+    ds1_data$recording_priority <- 1 #set them all to 1
+  }
+  
   #get the top visit for the month
   top_visit <- ds1_data %>% 
     filter(recording_priority == max(ds1_data$recording_priority,na.rm = T)) %>%
@@ -463,6 +466,7 @@ if(params$data_story == 1){
     arrange(desc(recording_priority)) %>% #order by decide score
     head(1)
   
+  #make sure thet we've got a top record
   if(nrow(top_visit)!=1){
     stop("No top visit found")
   }
