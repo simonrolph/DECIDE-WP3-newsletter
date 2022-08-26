@@ -342,6 +342,9 @@ place_name_fun <- function(lat,lon){
   
   place_name <- gsub("CP","",place_name)
   
+  warning(c(lon,lat))
+  warning(c(home_lon,params$home_lat))
+  
 
   #absolute fall back
   if(place_name == "in " ){
