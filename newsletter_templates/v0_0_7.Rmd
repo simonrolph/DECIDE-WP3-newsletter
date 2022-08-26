@@ -463,6 +463,10 @@ if(params$data_story == 1){
     arrange(desc(recording_priority)) %>% #order by decide score
     head(1)
   
+  if(nrow(top_visit)!=1){
+    stop("No top visit found")
+  }
+  
   place_name <- place_name_fun(lat = top_visit$latitude,lon = top_visit$longitude)
 
   
