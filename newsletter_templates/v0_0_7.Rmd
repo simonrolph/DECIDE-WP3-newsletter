@@ -371,14 +371,14 @@ place_name_fun <- function(lat,lon){
 # plot(image)
 
 
-knitr::include_graphics("../images/mydecide_logo.png")
+knitr::include_graphics("../images/mydecide_logo.jpg")
 
 ```
 
 
 
 
-![](../images/mydecide_logo.png)
+![](../images/mydecide_logo.jpg)
 
 ```{r wel, echo  = F, results='asis'}
 
