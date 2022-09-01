@@ -366,12 +366,12 @@ place_name_fun <- function(lat,lon){
 ```
 
 ```{r}
-library(imager)
-image <- load.image("../images/mydecide_logo.png")
-plot(image)
-
-
-knitr::include_graphics("../images/mydecide_logo.jpg")
+# library(imager)
+# image <- load.image("../images/mydecide_logo.png")
+# plot(image)
+# 
+# 
+# knitr::include_graphics("../images/mydecide_logo.jpg")
 
 ```
 
