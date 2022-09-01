@@ -3,15 +3,15 @@ title: "Send_emails via Rstudio Connect to access SMTP server"
 author: "Simon Rolph"
 output: html_document
 resource_files:
-  - "newsletters/2022-08-25/"
-  - "data_personal/emails_2022-08-25.rds"
+  - "newsletters/2022-08-31/"
+  - "data_personal/emails_2022-08-31.rds"
+  - "data_personal/unsubbed.txt"
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-
-batch_date <- "2022-08-25"
+batch_date <- "2022-08-31"
 # ^ this line (14) is updated by code at the end of 1_...Rmd
 ```
 
@@ -34,7 +34,7 @@ library(magrittr)
 
 creds <- creds_anonymous(host = "smtp.nerc-lancaster.ac.uk",port=25,use_ssl = T)
 
-test_mode <- TRUE
+test_mode <- FALSE
 
 ```
 

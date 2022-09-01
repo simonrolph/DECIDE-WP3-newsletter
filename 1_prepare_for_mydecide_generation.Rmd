@@ -84,6 +84,8 @@ user_db$newsletter_file_location <- ""
 #only subscribed users
 user_db <- filter(user_db,subscribed)
 
+nrow(user_db)
+
 #View the data frame
 #View(user_db)
 ```
