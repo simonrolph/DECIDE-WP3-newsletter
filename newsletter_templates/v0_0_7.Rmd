@@ -365,9 +365,10 @@ place_name_fun <- function(lat,lon){
 ### ACTUAL NEWSLETTER CONTENT STARTS BELOW
 ```
 
+```{r}
+Sys.sleep(runif(1,10,30))
 
-
-
+```
 
 
 
