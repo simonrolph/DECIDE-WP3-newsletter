@@ -25,6 +25,8 @@ data/species_records_*.RDS
 newsletter_templates/rosm.cache
 newsletter_templates/intermediates
 
+tmp
+
 
 
 rosm.cache
