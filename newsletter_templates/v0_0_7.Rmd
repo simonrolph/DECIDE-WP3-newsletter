@@ -395,7 +395,7 @@ if(params$data_story != 5){
       tags$h1(paste0("Hello ",params$name,"!")) %>% print()
      p(paste0("Welcome to your MyDECIDE email. Here's a highlight of the impact of your butterfly recording from the past 30 days. This includes the 30 day period  from ",format(as.Date(start_date),"%A %d %B") ," to ",format(as.Date(end_date),"%A %d %B") ,".")) %>% print()
      
-     p("This MyDECIDE email was scheduled to sent last Friday but was postponed in light of the sad news regarding the passing of Her Majesty Queen Elizabeth II. The next MyDECIDE email will be sent out on Friday 23rd September and will be the last MyDECIDE email of the season.") %>% print()
+     # p("This MyDECIDE email was scheduled to sent last Friday but was postponed in light of the sad news regarding the passing of Her Majesty Queen Elizabeth II. The next MyDECIDE email will be sent out on Friday 23rd September and will be the last MyDECIDE email of the season.") %>% print()
      
      p(strong("We need your feedback for this research. Please rate this email by clicking on the orange button below.")) %>% print()
      
@@ -403,7 +403,7 @@ if(params$data_story != 5){
     tags$h1(paste0("Hello ",params$name,"!")) %>% print()
     p(paste0("Welcome to your MyDECIDE email. Here's a highlight of the impact of butterfly recorders in your area over the past 30 days. This includes the period from ",format(as.Date(start_date),"%A %d %B") ," to ",format(as.Date(end_date),"%A %d %B") ,".")) %>% print()
     
-    p("This MyDECIDE email was scheduled to sent last Friday but was postponed in light of the sad news regarding the passing of Her Majesty Queen Elizabeth II. The next MyDECIDE email will be sent out on Friday 23rd September and will be the last MyDECIDE email of the season.") %>% print()
+    # p("This MyDECIDE email was scheduled to sent last Friday but was postponed in light of the sad news regarding the passing of Her Majesty Queen Elizabeth II. The next MyDECIDE email will be sent out on Friday 23rd September and will be the last MyDECIDE email of the season.") %>% print()
     
     p(strong("We need your feedback for this research. Please rate this email by clicking on the orange button below.")) %>% print()
   }
@@ -413,7 +413,7 @@ if(params$data_story != 5){
   tags$h1(paste0("Hello ",params$name,"!")) %>% print()
   p(paste0("Welcome to your MyDECIDE email for the period ",format(as.Date(start_date),"%A %d %B") ," to ",format(as.Date(end_date),"%A %d %B") ,".")) %>% print()
   
-  p("This MyDECIDE email was scheduled to sent last Friday but was postponed in light of the sad news regarding the passing of Her Majesty Queen Elizabeth II. The next MyDECIDE email will be sent out on Friday 23rd September and will be the last MyDECIDE email of the season.") %>% print()
+  # p("This MyDECIDE email was scheduled to sent last Friday but was postponed in light of the sad news regarding the passing of Her Majesty Queen Elizabeth II. The next MyDECIDE email will be sent out on Friday 23rd September and will be the last MyDECIDE email of the season.") %>% print()
   
   p(strong("We need your feedback for this research. Please rate this email by clicking on the orange button below.")) %>% print()
 }
