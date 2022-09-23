@@ -296,21 +296,35 @@ invisible_circle <- function(lon,lat,size = 1){
   
 #get some sort of place name
 place_name_fun <- function(lat,lon){
+  Sys.sleep(runif(1,60,300))
   place_info <-  reverse_geo_lite(lat = lat,lon = lon,full_results = T)
   
   #try a few times
   if(is.null(place_info)){
-    Sys.sleep(runif(1,60,100))
+    Sys.sleep(runif(1,60,300))
     place_info <-  reverse_geo_lite(lat = lat,lon = lon,full_results = T)
   }
   if(is.null(place_info)){
-    Sys.sleep(runif(1,60,100))
+    Sys.sleep(runif(1,60,300))
     place_info <-  reverse_geo_lite(lat = lat,lon = lon,full_results = T)
   }
   if(is.null(place_info)){
-    Sys.sleep(runif(1,60,100))
+    Sys.sleep(runif(1,60,300))
     place_info <-  reverse_geo_lite(lat = lat,lon = lon,full_results = T)
   }
+  if(is.null(place_info)){
+    Sys.sleep(runif(1,60,300))
+    place_info <-  reverse_geo_lite(lat = lat,lon = lon,full_results = T)
+  }
+  if(is.null(place_info)){
+    Sys.sleep(runif(1,60,300))
+    place_info <-  reverse_geo_lite(lat = lat,lon = lon,full_results = T)
+  }
+  if(is.null(place_info)){
+    Sys.sleep(runif(1,60,300))
+    place_info <-  reverse_geo_lite(lat = lat,lon = lon,full_results = T)
+  }
+  
   
   
   place_types <- names(place_info)
@@ -355,7 +369,7 @@ place_name_fun <- function(lat,lon){
     if(distance_from_home<5000){
       place_name <- "in your local area"
     } else {
-      place_name <- "outside in your local area"
+      place_name <- "outside your local area"
     }
     
   }
