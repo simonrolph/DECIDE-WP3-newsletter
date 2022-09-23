@@ -296,32 +296,32 @@ invisible_circle <- function(lon,lat,size = 1){
   
 #get some sort of place name
 place_name_fun <- function(lat,lon){
-  Sys.sleep(runif(1,60,300))
+  Sys.sleep(runif(1,1,200))
   place_info <-  reverse_geo_lite(lat = lat,lon = lon,full_results = T)
   
   #try a few times
   if(is.null(place_info)){
-    Sys.sleep(runif(1,60,300))
+    Sys.sleep(runif(1,60,200))
     place_info <-  reverse_geo_lite(lat = lat,lon = lon,full_results = T)
   }
   if(is.null(place_info)){
-    Sys.sleep(runif(1,60,300))
+    Sys.sleep(runif(1,60,200))
     place_info <-  reverse_geo_lite(lat = lat,lon = lon,full_results = T)
   }
   if(is.null(place_info)){
-    Sys.sleep(runif(1,60,300))
+    Sys.sleep(runif(1,60,200))
     place_info <-  reverse_geo_lite(lat = lat,lon = lon,full_results = T)
   }
   if(is.null(place_info)){
-    Sys.sleep(runif(1,60,300))
+    Sys.sleep(runif(1,60,200))
     place_info <-  reverse_geo_lite(lat = lat,lon = lon,full_results = T)
   }
   if(is.null(place_info)){
-    Sys.sleep(runif(1,60,300))
+    Sys.sleep(runif(1,60,200))
     place_info <-  reverse_geo_lite(lat = lat,lon = lon,full_results = T)
   }
   if(is.null(place_info)){
-    Sys.sleep(runif(1,60,300))
+    Sys.sleep(runif(1,60,200))
     place_info <-  reverse_geo_lite(lat = lat,lon = lon,full_results = T)
   }
   

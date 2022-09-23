@@ -4,7 +4,7 @@
 #SBATCH --job-name=newsletterRender
 #SBATCH -o out/%A_%a.out
 #SBATCH -e err/%A_%a.err
-#SBATCH --time=5:00
+#SBATCH --time=15:00
 #SBATCH --array=1-851
 #SBATCH --mem=4000
 module add jasr
